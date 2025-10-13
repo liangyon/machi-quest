@@ -1,0 +1,6 @@
+machi/node_modules
+machi/.next
+machi/.turbo
+machi/out
+machi/dist
+machi/.env*.local

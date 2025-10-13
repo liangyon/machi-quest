@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: machi_quest
+    ports:
+      - "5432:5432"
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@postgres:5432/machi_quest}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+  
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NODE_ENV=production
+  
+  worker:
+    build: ./worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@postgres:5432/machi_quest}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    depends_on:
+      - postgres
+      - redis
