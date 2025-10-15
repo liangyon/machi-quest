@@ -8,9 +8,13 @@ fastapi = "*"
 sqlalchemy = "*"
 alembic = "*"
 psycopg2-binary = "*"
-pydantic = "*"
 redis = "*"
+python-multipart = "*"
+pydantic-settings = "*"
 uvicorn = {extras = ["standard"], version = "*"}
+pydantic = {extras = ["email"], version = "*"}
+python-jose = {extras = ["cryptography"], version = "*"}
+passlib = {extras = ["bcrypt"], version = "*"}
 
 [dev-packages]
 

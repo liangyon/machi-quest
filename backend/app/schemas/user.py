@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
 
@@ -29,5 +29,26 @@ class UserResponse(UserBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+
+class TokenRefresh(BaseModel):
+    refresh_token: str
+
+
+class TokenData(BaseModel):
+    user_id: Optional[str] = None
+
+
+class UserWithPets(UserResponse):
+    """User response with pet references"""
+    pets: List[UUID] = []
 
     model_config = ConfigDict(from_attributes=True)
