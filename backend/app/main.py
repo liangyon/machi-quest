@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 from .db import init_db
-from .api import auth, users
+from .api import auth, users, pets, github_oauth
 from .core.config import settings
 
 
@@ -25,6 +26,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Add session middleware for OAuth (required by Authlib)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY
+)
+
 # Configure CORS for Next.js frontend
 app.add_middleware(
     CORSMiddleware,
@@ -34,9 +41,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(auth.router)
-app.include_router(users.router)
+# Include routers with API v1 prefix
+app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(users.router, prefix=settings.API_V1_STR)
+app.include_router(pets.router, prefix=settings.API_V1_STR)
+app.include_router(github_oauth.router, prefix=f"{settings.API_V1_STR}/auth/github", tags=["github-oauth"])
 
 
 @app.get("/")

@@ -2,10 +2,19 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from cryptography.fernet import Fernet
+import base64
 from .config import settings
 
 # Password hashing context using Argon2 (more secure than bcrypt)
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+# Initialize Fernet cipher for OAuth token encryption
+def get_fernet() -> Fernet:
+    """Get Fernet cipher instance for encrypting OAuth tokens."""
+    # Ensure the key is properly formatted (32 url-safe base64-encoded bytes)
+    key = settings.ENCRYPTION_KEY.encode()
+    return Fernet(key)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -56,3 +65,15 @@ def decode_token(token: str) -> Optional[dict]:
 def verify_token_type(payload: dict, expected_type: str) -> bool:
     """Verify that the token is of the expected type (access or refresh)."""
     return payload.get("type") == expected_type
+
+
+def encrypt_token(token: str) -> bytes:
+    """Encrypt an OAuth token for secure storage in the database."""
+    fernet = get_fernet()
+    return fernet.encrypt(token.encode())
+
+
+def decrypt_token(encrypted_token: bytes) -> str:
+    """Decrypt an OAuth token from the database."""
+    fernet = get_fernet()
+    return fernet.decrypt(encrypted_token).decode()

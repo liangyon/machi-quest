@@ -16,9 +16,11 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
-    hashed_password = Column(Text, nullable=False)
+    hashed_password = Column(Text, nullable=True)  # Nullable for OAuth-only users
     display_name = Column(String(100))
     avatar_url = Column(Text)
+    github_id = Column(String(100), unique=True, nullable=True, index=True)  # GitHub user ID
+    github_username = Column(String(100), nullable=True)  # GitHub username
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -37,6 +39,7 @@ class Pet(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     name = Column(String(100))
     species = Column(String(50), default="default")
+    description = Column(String(500))
     state_json = Column(JSONB, default={})
     version = Column(Integer, default=1)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
