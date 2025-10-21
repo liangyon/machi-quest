@@ -21,13 +21,14 @@ from ..core.config import settings
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """
-    Register a new user.
+    Register a new user and return tokens.
     
-    Returns the created user object without tokens.
-    User must login after registration to receive tokens.
+    Available at both /signup and /register endpoints.
+    Returns access and refresh tokens immediately after registration.
     """
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == user_data.email).first()
@@ -50,7 +51,19 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     
-    return new_user
+    # Create tokens for immediate login
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(new_user.id)},
+        expires_delta=access_token_expires
+    )
+    refresh_token = create_refresh_token(data={"sub": str(new_user.id)})
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer"
+    }
 
 
 @router.post("/token", response_model=Token)

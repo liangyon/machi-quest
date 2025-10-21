@@ -14,7 +14,7 @@ pydantic-settings = "*"
 uvicorn = {extras = ["standard"], version = "*"}
 pydantic = {extras = ["email"], version = "*"}
 python-jose = {extras = ["cryptography"], version = "*"}
-passlib = {extras = ["bcrypt"], version = "*"}
+passlib = {extras = ["argon2"], version = "*"}
 
 [dev-packages]
 

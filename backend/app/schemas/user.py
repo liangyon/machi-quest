@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     email: EmailStr
     display_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    github_username: Optional[str] = None
 
 
 class UserCreate(UserBase):

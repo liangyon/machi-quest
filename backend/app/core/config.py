@@ -9,8 +9,19 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # Short-lived access tokens
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7  # Refresh tokens last 7 days
     
+    # Encryption Key for OAuth Tokens (32 bytes for Fernet)
+    ENCRYPTION_KEY: str  # Must be set in environment variables
+    
+    # GitHub OAuth Settings
+    GITHUB_CLIENT_ID: str  # Must be set in environment variables
+    GITHUB_CLIENT_SECRET: str  # Must be set in environment variables
+    GITHUB_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/github/callback"
+    
     # Database
     DATABASE_URL: Optional[str] = None
+    
+    # Redis
+    REDIS_URL: Optional[str] = None
     
     # API Settings
     API_V1_STR: str = "/api/v1"
