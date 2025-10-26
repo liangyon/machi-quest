@@ -41,10 +41,19 @@ services:
       - NODE_ENV=production
   
   worker:
-    build: ./worker
+    build: ./backend
+    command: python -m app.workers.webhook_worker
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@postgres:5432/machi_quest}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      SECRET_KEY: ${SECRET_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
     depends_on:
       - postgres
       - redis
+      - backend
+    volumes:
+      - ./backend:/app
+    env_file:
+      - ./backend/.env

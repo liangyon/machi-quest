@@ -79,7 +79,7 @@ class EventRaw(Base):
     __tablename__ = "event_raw"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    integration_id = Column(UUID(as_uuid=True), ForeignKey("integrations.id"), nullable=False)
+    integration_id = Column(UUID(as_uuid=True), ForeignKey("integrations.id"), nullable=True)
     external_event_id = Column(String(255), unique=True, index=True)
     payload = Column(JSONB, nullable=False)
     received_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

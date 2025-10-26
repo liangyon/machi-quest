@@ -11,6 +11,13 @@ psycopg2-binary = "*"
 redis = "*"
 python-multipart = "*"
 pydantic-settings = "*"
+cryptography = "*"
+authlib = "*"
+httpx = "*"
+itsdangerous = "*"
+requests = "*"
+pytest = "*"
+pytest-cov = "*"
 uvicorn = {extras = ["standard"], version = "*"}
 pydantic = {extras = ["email"], version = "*"}
 python-jose = {extras = ["cryptography"], version = "*"}
