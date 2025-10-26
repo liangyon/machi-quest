@@ -1,8 +1,19 @@
-# Placeholder for worker service
-# TODO: Implement worker Dockerfile based on project requirements
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Add your worker implementation here
-CMD ["echo", "Worker service not yet implemented"]
+# Copy backend requirements and install dependencies
+COPY ../backend/requirements.txt /app/backend/requirements.txt
+RUN pip install --no-cache-dir -r /app/backend/requirements.txt
+
+# Copy backend code (needed for imports)
+COPY ../backend /app/backend
+
+# Copy worker code
+COPY . /app/worker
+
+# Set Python path to include backend
+ENV PYTHONPATH=/app
+
+# Run the worker
+CMD ["python", "/app/worker/main.py"]

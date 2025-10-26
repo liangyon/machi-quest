@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_SECRET: str  # Must be set in environment variables
     GITHUB_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/github/callback"
     
+    # GitHub Webhook Settings
+    GITHUB_WEBHOOK_SECRET: str  # Must be set in environment variables
+    
     # Database
     DATABASE_URL: Optional[str] = None
     

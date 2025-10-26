@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 from .db import init_db
-from .api import auth, users, pets, github_oauth
+from .api import auth, users, pets, github_oauth, github_webhooks, admin
 from .core.config import settings
 
 
@@ -46,6 +46,8 @@ app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(users.router, prefix=settings.API_V1_STR)
 app.include_router(pets.router, prefix=settings.API_V1_STR)
 app.include_router(github_oauth.router, prefix=f"{settings.API_V1_STR}/auth/github", tags=["github-oauth"])
+app.include_router(github_webhooks.router, tags=["github-webhooks"])
+app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 
 @app.get("/")
