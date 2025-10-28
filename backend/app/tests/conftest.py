@@ -13,7 +13,7 @@ import hashlib
 import json
 
 from app.main import app
-from app.db.database import Base
+from app.db.models import Base
 from app.core.dependencies import get_db
 from app.core.config import settings
 
