@@ -1,10 +1,13 @@
 """
-GitHub Webhook Worker
+Webhook Worker (Multi-Provider)
 
 Consumes webhook events from Redis queue and processes them asynchronously.
+Supports multiple event sources: GitHub, Strava, and more.
+
 This worker runs as a separate process but uses the same codebase as the API.
 
 Features:
+- Multi-provider support (GitHub, Strava, etc.)
 - Clean imports (no path hacks)
 - Pending message recovery (handles crashes)
 - Graceful error handling
@@ -15,15 +18,18 @@ import logging
 from uuid import UUID
 import asyncio
 
-from app.services.queue import QueueService
+from app.services.queue import QueueService, WEBHOOK_EVENTS_STREAM, SCORE_DELTAS_STREAM
 from app.core.config import settings
 from app.db.database import SessionLocal
-from app.db.models import EventRaw, Integration
-from app.api.github_webhooks import (
-    process_push_event,
-    process_pull_request_event,
-    process_commit_comment_event
+from app.db.models import EventRaw, Integration, Event, User, Pet
+from app.services.event_normalizer import EventType
+from app.services.normalizers.github import (
+    normalize_github_push,
+    normalize_github_pull_request,
+    normalize_github_commit_comment
 )
+from app.services.normalizers.strava import normalize_strava_activity
+from app.services.scoring_engine import ScoringEngine
 
 # Configure logging
 logging.basicConfig(
@@ -33,9 +39,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Constants
-STREAM_NAME = 'webhook-events'
+STREAM_NAME = WEBHOOK_EVENTS_STREAM
 GROUP_NAME = 'workers'
 CONSUMER_NAME = 'worker-1'
+
+# Initialize scoring engine
+scoring_engine = ScoringEngine()
 
 
 def process_message(queue: QueueService, msg_id: str, data: dict):
@@ -76,33 +85,112 @@ def process_message(queue: QueueService, msg_id: str, data: dict):
             queue.acknowledge(STREAM_NAME, GROUP_NAME, msg_id)
             return
         
-        # Process based on event type
-        created_events = []
+        # Get user from integration (provider-agnostic approach)
+        user = None
         
+        if event_raw.integration_id:
+            # Event already linked to integration (e.g., Strava)
+            integration = db.query(Integration).filter(
+                Integration.id == event_raw.integration_id
+            ).first()
+            if integration:
+                user = db.query(User).filter(User.id == integration.user_id).first()
+        else:
+            # GitHub events - need to find user by GitHub ID in payload
+            sender = event_raw.payload.get('sender', {})
+            if sender:
+                github_user_id = str(sender.get('id'))
+                user = db.query(User).filter(User.github_id == github_user_id).first()
+                
+                # Link to integration if found
+                if user:
+                    integration = db.query(Integration).filter(
+                        Integration.user_id == user.id,
+                        Integration.provider == 'github'
+                    ).first()
+                    if integration:
+                        event_raw.integration_id = integration.id
+        
+        if not user:
+            logger.warning(f"User not found for event {event_raw_id}")
+            event_raw.processed = True
+            db.commit()
+            queue.acknowledge(STREAM_NAME, GROUP_NAME, msg_id)
+            return
+        
+        # Get user's primary pet (or create one if needed)
+        pet = db.query(Pet).filter(Pet.user_id == user.id).first()
+        if not pet:
+            logger.info(f"Creating default pet for user {user.id}")
+            pet = Pet(
+                user_id=user.id,
+                name="Default Pet",
+                species="default",
+                state_json={"food": 0, "happiness": 50, "health": 100}
+            )
+            db.add(pet)
+            db.flush()
+        
+        # Step 1: Normalize to canonical events
+        canonical_events = []
         if event_type == 'push':
-            created_events = asyncio.run(
-                process_push_event(event_raw.payload, db, event_raw.id)
+            canonical_events = normalize_github_push(
+                event_raw.payload, user.id, event_raw.id
             )
         elif event_type == 'pull_request':
-            created_events = asyncio.run(
-                process_pull_request_event(event_raw.payload, db, event_raw.id)
+            canonical_events = normalize_github_pull_request(
+                event_raw.payload, user.id, event_raw.id
             )
         elif event_type == 'commit_comment':
-            created_events = asyncio.run(
-                process_commit_comment_event(event_raw.payload, db, event_raw.id)
+            canonical_events = normalize_github_commit_comment(
+                event_raw.payload, user.id, event_raw.id
+            )
+        elif event_type == 'strava_activity':
+            canonical_events = normalize_strava_activity(
+            event_raw.payload, user.id, event_raw.id
             )
         else:
             logger.warning(f"Unknown event type: {event_type}")
         
-        # Link EventRaw to user's integration if events were created
-        if created_events and len(created_events) > 0:
-            user_id = created_events[0].user_id
-            integration = db.query(Integration).filter(
-                Integration.user_id == user_id,
-                Integration.provider == 'github'
-            ).first()
-            if integration:
-                event_raw.integration_id = integration.id
+        # Step 2: Create Event DB records from canonical events
+        created_events = []
+        for canon in canonical_events:
+            event = Event(
+                id=UUID(str(canon.event_raw_id)) if canon.event_raw_id else UUID(str(event_raw.id)),
+                event_raw_id=event_raw.id,
+                user_id=canon.user_id,
+                pet_id=pet.id,
+                type=canon.type,
+                value=canon.value,
+                meta=canon.meta,
+                created_at=canon.timestamp,
+                scored=False
+            )
+            db.add(event)
+            db.flush()  # Get the ID
+            created_events.append(event)
+            
+            # Step 3: Score the event
+            canon.pet_id = pet.id  # Assign pet for scoring
+            score_deltas = scoring_engine.score_event(canon, pet.id)
+            
+            # Step 4: Publish score deltas to queue
+            for delta in score_deltas:
+                queue.publish(SCORE_DELTAS_STREAM, {
+                    'delta_type': delta.delta_type,
+                    'amount': str(delta.amount),
+                    'event_id': str(event.id),
+                    'pet_id': str(delta.pet_id),
+                    'timestamp': delta.timestamp.isoformat(),
+                    'meta': str(delta.meta)
+                })
+                logger.debug(f"Published {delta.delta_type} delta: {delta.amount}")
+            
+            # Mark event as scored
+            event.scored = True
+        
+        # EventRaw should already be linked to integration from above
+        # No need to do it again here
         
         # Mark as processed
         event_raw.processed = True
