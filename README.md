@@ -7,8 +7,8 @@ Machi Quest is a gamified productivity platform that connects user data sources 
 
 ## Contents
 - `backend/` — FastAPI application, DB models, normalization and scoring services.
+- `backend/worker/` — Background worker to process normalization and scoring jobs.
 - `frontend/` — Next.js (or create-react-app) prototype with Phaser scene for the pet.
-- `worker/` — Background worker to process normalization and scoring jobs.
 - `charts/machi-quest/` — Helm chart skeleton for Kubernetes deployment (Week 5 target).
 - `infra/terraform/` — Terraform skeleton for cloud provisioning (RDS, S3, cluster placeholders).
 - `.github/workflows/ci.yml` — CI pipeline for lint/test/build.
