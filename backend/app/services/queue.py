@@ -3,6 +3,10 @@
 # Why: Separates queue logic from business logic
 import redis
 
+# Queue stream names
+WEBHOOK_EVENTS_STREAM = 'webhook-events'
+SCORE_DELTAS_STREAM = 'score-deltas'
+
 class QueueService:
     def __init__(self, redis_url):
         """Connect to Redis server."""

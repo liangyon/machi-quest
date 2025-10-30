@@ -136,4 +136,5 @@ __all__ = [
     'normalize_github_pull_request',
     'normalize_github_commit_comment',
     'normalize_manual_event',
+    'normalize_strava_activity',
 ]

@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     # GitHub Webhook Settings
     GITHUB_WEBHOOK_SECRET: str  # Must be set in environment variables
     
+    # Strava OAuth Settings
+    STRAVA_CLIENT_ID: str = ""  # Optional - set if using Strava
+    STRAVA_CLIENT_SECRET: str = ""  # Optional
+    STRAVA_VERIFY_TOKEN: str = ""  # For webhook validation
+    STRAVA_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/strava/callback"
+    
     # Database
     DATABASE_URL: Optional[str] = None
     

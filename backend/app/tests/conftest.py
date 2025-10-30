@@ -10,12 +10,43 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 import hmac
 import hashlib
-import json
+import json as json_lib
 
-from app.main import app
 from app.db.models import Base
 from app.core.dependencies import get_db
 from app.core.config import settings
+
+# Import app components separately to build test app
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from app.api import auth, users, pets, github_oauth, github_webhooks, admin, strava_webhooks
+
+# Create test app without lifespan (no DB init)
+app = FastAPI(
+    title="Machi Quest API (Test)",
+    description="Test instance",
+    version="0.1.0"
+)
+
+# Add middleware
+app.add_middleware(SessionMiddleware, secret_key="test-secret-key")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
+app.include_router(pets.router, prefix="/api/v1")
+app.include_router(github_oauth.router, prefix="/api/v1/auth/github", tags=["github-oauth"])
+app.include_router(github_webhooks.router, tags=["github-webhooks"])
+app.include_router(strava_webhooks.router, tags=["strava-webhooks"])
+app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 # Create in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -154,25 +185,52 @@ def generate_github_signature(payload: dict, secret: str) -> str:
     Returns:
         Signature string in format "sha256=<hex>"
     """
-    payload_bytes = json.dumps(payload).encode('utf-8')
+    payload_bytes = json_lib.dumps(payload).encode('utf-8')
     mac = hmac.new(secret.encode('utf-8'), payload_bytes, hashlib.sha256)
     return f"sha256={mac.hexdigest()}"
 
 
 @pytest.fixture
-def signed_webhook_headers(mock_push_payload, webhook_secret):
+def signed_webhook_headers(webhook_secret):
     """
     Generate valid webhook headers with signature.
     
-    Returns headers dict ready for HTTP request.
+    NOTE: Signature is computed from the actual request body,
+    so this fixture only provides the headers structure.
+    Tests should compute signature themselves if needed.
     """
-    signature = generate_github_signature(mock_push_payload, webhook_secret)
-    
     return {
         "X-GitHub-Event": "push",
         "X-GitHub-Delivery": "12345678-1234-1234-1234-123456789abc",
-        "X-Hub-Signature-256": signature,
+        "X-Hub-Signature-256": None,  # Will be set by test
         "Content-Type": "application/json"
+    }
+
+
+@pytest.fixture
+def signed_webhook_request(mock_push_payload, webhook_secret):
+    """
+    Generate webhook with properly signed headers.
+    
+    Use this for tests that need valid signature.
+    Returns both raw content (for signature) and headers.
+    """
+    # Serialize payload to JSON bytes (this is what signature is computed from)
+    payload_bytes = json_lib.dumps(mock_push_payload, separators=(',', ':')).encode('utf-8')
+    
+    # Compute signature from exact bytes
+    mac = hmac.new(webhook_secret.encode('utf-8'), payload_bytes, hashlib.sha256)
+    signature = f"sha256={mac.hexdigest()}"
+    
+    return {
+        "payload": mock_push_payload,
+        "payload_bytes": payload_bytes,  # Raw bytes for .post(content=...)
+        "headers": {
+            "X-GitHub-Event": "push",
+            "X-GitHub-Delivery": "12345678-1234-1234-1234-123456789abc",
+            "X-Hub-Signature-256": signature,
+            "Content-Type": "application/json"
+        }
     }
 
 
