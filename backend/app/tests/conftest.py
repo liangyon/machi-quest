@@ -20,7 +20,9 @@ from app.core.config import settings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from app.api import auth, users, pets, github_oauth, github_webhooks, admin, strava_webhooks
+from app.api import auth, users, pets, admin
+from app.api.integrations import github_oauth
+from app.api.webhooks import github, strava
 
 # Create test app without lifespan (no DB init)
 app = FastAPI(
@@ -44,8 +46,8 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(pets.router, prefix="/api/v1")
 app.include_router(github_oauth.router, prefix="/api/v1/auth/github", tags=["github-oauth"])
-app.include_router(github_webhooks.router, tags=["github-webhooks"])
-app.include_router(strava_webhooks.router, tags=["strava-webhooks"])
+app.include_router(github.router, tags=["github-webhooks"])
+app.include_router(strava.router, tags=["strava-webhooks"])
 app.include_router(admin.router, prefix="/admin", tags=["admin"])
 
 # Create in-memory SQLite database for testing

@@ -12,10 +12,10 @@ import hashlib
 import uuid
 from datetime import datetime
 
-from ..core.config import settings
-from ..core.dependencies import get_db
-from ..db.models import EventRaw, Event, User, Integration
-from ..services.queue import QueueService
+from ...core.config import settings
+from ...core.dependencies import get_db
+from ...db.models import EventRaw, Event, User, Integration
+from ...services.queue import QueueService
 
 
 router = APIRouter()

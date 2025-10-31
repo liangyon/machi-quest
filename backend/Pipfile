@@ -18,6 +18,9 @@ itsdangerous = "*"
 requests = "*"
 pytest = "*"
 pytest-cov = "*"
+fastapi-csrf-protect = "*"
+slowapi = "*"
+jwt = "*"
 uvicorn = {extras = ["standard"], version = "*"}
 pydantic = {extras = ["email"], version = "*"}
 python-jose = {extras = ["cryptography"], version = "*"}

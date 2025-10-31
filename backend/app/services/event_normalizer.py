@@ -27,19 +27,19 @@ class EventType:
     GITHUB_PR_CLOSED = "github_pr_closed"
     GITHUB_COMMIT_COMMENT = "github_commit_comment"
     
-    # Fitness & Health (future integrations)
+    # Fitness & Health 
     STRAVA_ACTIVITY = "strava_activity"
     APPLE_HEALTH_WORKOUT = "apple_health_workout"
     APPLE_HEALTH_STEPS = "apple_health_steps"
     
-    # Learning & Productivity (future integrations)
+    # Learning & Productivity 
     DUOLINGO_LESSON = "duolingo_lesson"
     TODOIST_TASK = "todoist_task"
     
-    # Creative & Hobbies (future integrations)
+    # Creative & Hobbies 
     GOODREADS_BOOK = "goodreads_book"
     
-    # Manual tracking (user-submitted)
+    # Manual tracking 
     MANUAL_HABIT = "manual_habit"
     MANUAL_GOAL_PROGRESS = "manual_goal_progress"
 
