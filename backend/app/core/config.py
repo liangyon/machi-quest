@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     # GitHub Webhook Settings
     GITHUB_WEBHOOK_SECRET: str  # Must be set in environment variables
     
+    # GitHub App Settings (for activity tracking integration)
+    GITHUB_APP_ID: str = ""  # Optional - GitHub App ID
+    GITHUB_APP_PRIVATE_KEY: str = ""  # Optional - GitHub App private key (PEM format)
+    GITHUB_APP_WEBHOOK_SECRET: str = ""  # Optional - GitHub App webhook secret
+    
+    # Google OAuth Settings
+    GOOGLE_CLIENT_ID: str = ""  # Optional - set if using Google Sign In
+    GOOGLE_CLIENT_SECRET: str = ""  # Optional
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    
     # Strava OAuth Settings
     STRAVA_CLIENT_ID: str = ""  # Optional - set if using Strava
     STRAVA_CLIENT_SECRET: str = ""  # Optional
@@ -35,6 +45,7 @@ class Settings(BaseSettings):
     # API Settings
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Machi Quest API"
+    ENVIRONMENT: str = "development"  # development, staging, production
     
     # CORS Settings
     FRONTEND_URL: str = "http://localhost:3000"  # Next.js default

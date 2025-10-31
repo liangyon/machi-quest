@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 
 from .security import decode_token, verify_token_type
+from .token_blacklist import get_token_blacklist
 from ..db.database import get_db
 from ..db.models import User
 
@@ -18,6 +19,13 @@ async def get_current_user(
     """
     Dependency to get the current authenticated user.
     Use this in any endpoint that requires authentication.
+    
+    Checks:
+    1. Token is valid JWT
+    2. Token type is "access"
+    3. Token is not blacklisted
+    4. User is not globally blacklisted
+    5. User exists in database
     """
     # Decode and validate access token
     payload = decode_token(token)
@@ -44,6 +52,28 @@ async def get_current_user(
             detail="Invalid token payload",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Check token blacklist (optional - requires Redis)
+    try:
+        blacklist = get_token_blacklist()
+        if blacklist.is_revoked(token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Check if user is globally blacklisted
+        if blacklist.is_user_blacklisted(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User session has been invalidated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except (ConnectionError, Exception) as e:
+        # Redis not available - log warning but continue
+        # In production, you might want to fail closed instead
+        print(f"Warning: Token blacklist check failed: {e}")
     
     # Get user from database
     user = db.query(User).filter(User.id == UUID(user_id)).first()

@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import uuid
 
-from ..core.config import settings
-from ..core.dependencies import get_db
-from ..db.models import EventRaw, User, Integration
-from ..services.queue import QueueService, WEBHOOK_EVENTS_STREAM
+from ...core.config import settings
+from ...core.dependencies import get_db
+from ...db.models import EventRaw, User, Integration
+from ...services.queue import QueueService, WEBHOOK_EVENTS_STREAM
 
 router = APIRouter()
 queue = QueueService(settings.REDIS_URL)

@@ -1,14 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from authlib.integrations.starlette_client import OAuth
 from typing import Optional
 import httpx
 
-from ..core.config import settings
-from ..core.security import create_access_token, create_refresh_token, encrypt_token
-from ..core.dependencies import get_db
-from ..db.models import User, Integration
+from ...core.config import settings
+from ...core.security import create_access_token, create_refresh_token, encrypt_token
+from ...core.dependencies import get_db
+from ...db.models import User, Integration, AuditLog
 import uuid
 
 router = APIRouter()
@@ -154,13 +154,39 @@ async def github_callback(
         
         db.commit()
         
+        # Audit log
+        audit_log = AuditLog(
+            user_id=user.id,
+            action="github_login",
+            target_type="auth",
+            meta_data={
+                "ip_address": request.client.host if request.client else "unknown",
+                "user_agent": request.headers.get("user-agent", "unknown"),
+                "github_username": github_user['login']
+            }
+        )
+        db.add(audit_log)
+        db.commit()
+        
         # Create JWT tokens for our application
         access_token = create_access_token(data={"sub": str(user.id)})
         refresh_token = create_refresh_token(data={"sub": str(user.id)})
         
-        # Redirect to frontend with tokens
-        redirect_url = f"{settings.FRONTEND_URL}/auth/callback?access_token={access_token}&refresh_token={refresh_token}"
-        return RedirectResponse(url=redirect_url)
+        # Create redirect response with refresh token in httpOnly cookie
+        redirect_url = f"{settings.FRONTEND_URL}/auth/callback?access_token={access_token}"
+        response = RedirectResponse(url=redirect_url)
+        
+        # Set refresh token in httpOnly cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,
+            secure=settings.ENVIRONMENT == "production",
+            samesite="lax",
+            max_age=604800  # 7 days
+        )
+        
+        return response
         
     except httpx.HTTPStatusError as e:
         raise HTTPException(

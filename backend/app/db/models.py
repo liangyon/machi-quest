@@ -49,6 +49,7 @@ class User(Base):
     avatar_url = Column(Text)
     github_id = Column(String(100), unique=True, nullable=True, index=True)  # GitHub user ID
     github_username = Column(String(100), nullable=True)  # GitHub username
+    google_id = Column(String(100), unique=True, nullable=True, index=True)  # Google user ID
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
