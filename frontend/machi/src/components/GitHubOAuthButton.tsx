@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Github } from 'lucide-react';
-import { apiClient } from '@/lib/api-client';
+import { authApi } from '@/libs/api/authApi';
 
 interface GitHubOAuthButtonProps {
   className?: string;
@@ -14,7 +14,7 @@ export default function GitHubOAuthButton({ className = '' }: GitHubOAuthButtonP
 
   const handleGitHubLogin = () => {
     setIsLoading(true);
-    window.location.href = apiClient.getGitHubLoginURL();
+    window.location.href = authApi.getGitHubLoginURL();
   };
 
   return (

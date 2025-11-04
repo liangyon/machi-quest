@@ -1,15 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { apiClient } from '@/lib/api-client';
+import { setAccessToken, getAccessToken } from '@/libs/axios';
+import type { User } from '@/types/user.types';
 
-interface User {
-  id: string;
-  email: string;
-  display_name: string;
-  avatar_url?: string;
-  github_username?: string;
-}
+import { authApi } from '@/libs/api/authApi';
 
 interface AuthContextType {
   user: User | null;
@@ -29,23 +24,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const token = apiClient.getAccessToken();
+      const token = getAccessToken();
+      
       if (!token) {
-        setUser(null);
-        return;
+        // No token in memory, try to refresh from httpOnly cookie
+        try {
+          await authApi.refreshToken();
+        } catch {
+          // No valid refresh token
+          setUser(null);
+          return;
+        }
       }
 
-      const userData = await apiClient.getCurrentUser();
+      // Fetch user data
+      const userData = await authApi.getCurrentUser();
       setUser(userData);
     } catch (error) {
-      console.error('Failed to fetch user:', error);
-      // Clear tokens if user fetch fails
-      apiClient.clearTokens();
+      console.error('Failed to restore session:', error);
+      setAccessToken(null);
       setUser(null);
     }
   }, []);
 
-  // Load user on mount
+  // Load user on mount - try to restore session from httpOnly cookie
   useEffect(() => {
     const initAuth = async () => {
       setIsLoading(true);
@@ -56,9 +58,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, [refreshUser]);
 
+
+
   const login = useCallback(async (email: string, password: string) => {
     try {
-      await apiClient.login(email, password);
+      await authApi.login(email, password);
+      
       await refreshUser();
     } catch (error) {
       console.error('Login failed:', error);
@@ -66,9 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshUser]);
 
+
+
+
   const signup = useCallback(async (email: string, password: string, displayName?: string) => {
     try {
-      await apiClient.signup(email, password, displayName);
+      await authApi.signup(
+        email,
+        password,
+        displayName);
+
       await refreshUser();
     } catch (error) {
       console.error('Signup failed:', error);
@@ -78,10 +90,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await apiClient.logout();
+      // Backend will clear the httpOnly refresh token cookie
+      await authApi.logout();
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
+      // Clear in-memory access token
+      setAccessToken(null);
       setUser(null);
     }
   }, []);

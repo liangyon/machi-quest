@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiClient } from '@/lib/api-client';
+import { setAccessToken } from '@/libs/axios';
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -15,20 +15,19 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Get tokens from URL parameters
+        // Get access token from URL (refresh token is in httpOnly cookie)
         const accessToken = searchParams.get('access_token');
-        const refreshToken = searchParams.get('refresh_token');
 
-        if (!accessToken || !refreshToken) {
-          setError('Authentication failed: Missing tokens');
+        if (!accessToken) {
+          setError('Authentication failed: Missing access token');
           setStatus('error');
           return;
         }
 
-        // Store tokens securely using API client
-        apiClient.setTokens(accessToken, refreshToken);
+        // Store access token in memory
+        setAccessToken(accessToken);
 
-        // Refresh user data in AuthContext
+        // Fetch user data using the new access token
         await refreshUser();
 
         setStatus('success');
