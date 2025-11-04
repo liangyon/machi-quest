@@ -6,7 +6,6 @@ from ..db.models import User
 from ..schemas.user import UserResponse
 from ..core.dependencies import get_current_user
 
-
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
@@ -15,8 +14,4 @@ async def get_current_user_info(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Get current authenticated user's information.
-    Returns user data including GitHub username if linked.
-    """
     return current_user

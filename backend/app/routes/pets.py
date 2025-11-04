@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from typing import List
 from uuid import UUID
 import logging
@@ -11,12 +10,10 @@ from ..schemas.pet import PetCreate, PetResponse, PetUpdate, PetState
 from ..core.dependencies import get_current_user
 from ..services.cache import CacheService, pet_state_key
 from ..core.config import settings
+from ..repositories.pet_repository import PetRepository
 
 logger = logging.getLogger(__name__)
-
-# Initialize cache service
 cache = CacheService(settings.REDIS_URL)
-
 router = APIRouter(prefix="/pets", tags=["Pets"])
 
 
@@ -26,15 +23,9 @@ async def create_pet(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Create a new pet for the authenticated user.
-    
-    The pet will be initialized with default state values.
-    """
-    # Initialize default pet state
+    pet_repo = PetRepository(db)
     default_state = PetState()
     
-    # Create new pet
     new_pet = Pet(
         user_id=current_user.id,
         name=pet_data.name or "My Pet",
@@ -44,11 +35,7 @@ async def create_pet(
         version=1
     )
     
-    db.add(new_pet)
-    await db.commit()
-    await db.refresh(new_pet)
-    
-    return new_pet
+    return await pet_repo.create(new_pet)
 
 
 @router.get("", response_model=List[PetResponse])
@@ -56,12 +43,8 @@ async def get_user_pets(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Get all pets belonging to the authenticated user.
-    """
-    result = await db.execute(select(Pet).where(Pet.user_id == current_user.id))
-    pets = result.scalars().all()
-    return pets
+    pet_repo = PetRepository(db)
+    return await pet_repo.get_by_user_id(current_user.id)
 
 
 @router.get("/{pet_id}", response_model=PetResponse)
@@ -70,15 +53,8 @@ async def get_pet(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Get a specific pet by ID.
-    
-    The pet must belong to the authenticated user.
-    """
-    result = await db.execute(
-        select(Pet).where(Pet.id == pet_id, Pet.user_id == current_user.id)
-    )
-    pet = result.scalar_one_or_none()
+    pet_repo = PetRepository(db)
+    pet = await pet_repo.get_by_id_and_user(pet_id, current_user.id)
     
     if not pet:
         raise HTTPException(
@@ -95,30 +71,16 @@ async def get_pet_state(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Get a pet's current state with Redis caching.
-    
-    This endpoint is optimized for frequent polling by the frontend.
-    State is cached in Redis for 5 minutes and invalidated on updates.
-    
-    Returns:
-        PetState: Current pet state (food, currency, happiness, health, etc.)
-    """
+    pet_repo = PetRepository(db)
     cache_key = pet_state_key(str(pet_id))
     
-    # Try to get from cache first
     cached_state = cache.get(cache_key)
     if cached_state is not None:
         logger.debug(f"Cache HIT for pet {pet_id} state")
         return PetState(**cached_state)
     
-    # Cache miss - fetch from database
     logger.debug(f"Cache MISS for pet {pet_id} state")
-    
-    result = await db.execute(
-        select(Pet).where(Pet.id == pet_id, Pet.user_id == current_user.id)
-    )
-    pet = result.scalar_one_or_none()
+    pet = await pet_repo.get_by_id_and_user(pet_id, current_user.id)
     
     if not pet:
         raise HTTPException(
@@ -126,7 +88,6 @@ async def get_pet_state(
             detail="Pet not found or you don't have permission to access it"
         )
     
-    # Get state (with defaults if not initialized)
     if not pet.state_json or pet.state_json == {}:
         state_data = {
             "food": 0,
@@ -140,9 +101,7 @@ async def get_pet_state(
     else:
         state_data = pet.state_json
     
-    # Cache the state
-    cache.set(cache_key, state_data, ttl_seconds=300)  # 5 minute TTL
-    
+    cache.set(cache_key, state_data, ttl_seconds=300)
     return PetState(**state_data)
 
 
@@ -153,16 +112,8 @@ async def update_pet(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Update a pet's information.
-    
-    You can update the pet's name, species, or state.
-    Invalidates cache on state changes.
-    """
-    result = await db.execute(
-        select(Pet).where(Pet.id == pet_id, Pet.user_id == current_user.id)
-    )
-    pet = result.scalar_one_or_none()
+    pet_repo = PetRepository(db)
+    pet = await pet_repo.get_by_id_and_user(pet_id, current_user.id)
     
     if not pet:
         raise HTTPException(
@@ -170,7 +121,6 @@ async def update_pet(
             detail="Pet not found or you don't have permission to access it"
         )
     
-    # Update fields if provided
     if pet_update.name is not None:
         pet.name = pet_update.name
     
@@ -182,15 +132,13 @@ async def update_pet(
     
     if pet_update.state_json is not None:
         pet.state_json = pet_update.state_json.model_dump()
-        pet.version += 1  # Increment version on state change
+        await pet_repo.increment_version(pet)
         
-        # Invalidate cache since state changed
         cache_key = pet_state_key(str(pet_id))
         cache.delete(cache_key)
         logger.info(f"Invalidated cache for pet {pet_id}")
-    
-    await db.commit()
-    await db.refresh(pet)
+    else:
+        await pet_repo.update(pet)
     
     return pet
 
@@ -201,16 +149,8 @@ async def delete_pet(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Delete a pet.
-    
-    Only pets belonging to the authenticated user can be deleted.
-    This will also delete all associated events.
-    """
-    result = await db.execute(
-        select(Pet).where(Pet.id == pet_id, Pet.user_id == current_user.id)
-    )
-    pet = result.scalar_one_or_none()
+    pet_repo = PetRepository(db)
+    pet = await pet_repo.get_by_id_and_user(pet_id, current_user.id)
     
     if not pet:
         raise HTTPException(
@@ -218,25 +158,15 @@ async def delete_pet(
             detail="Pet not found or you don't have permission to access it"
         )
     
-    # Invalidate cache before deleting
     cache_key = pet_state_key(str(pet_id))
     cache.delete(cache_key)
-    
-    await db.delete(pet)
-    await db.commit()
+    await pet_repo.delete(pet)
     
     return None
 
 
 @router.get("/metrics/cache", response_model=dict)
-async def get_cache_metrics(
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Get cache performance metrics.
-    
-    Returns hit/miss statistics for monitoring cache effectiveness.
-    """
+async def get_cache_metrics(current_user: User = Depends(get_current_user)):
     metrics = cache.get_metrics()
     return {
         "cache_metrics": metrics,

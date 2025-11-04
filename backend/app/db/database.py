@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from typing import AsyncGenerator
 import os
 
@@ -12,7 +13,26 @@ DATABASE_URL_SYNC = os.getenv(
 # Convert to async version for asyncpg driver
 DATABASE_URL = DATABASE_URL_SYNC.replace("postgresql://", "postgresql+asyncpg://")
 
-# Create async engine
+# Convert to sync version with psycopg2 driver for workers and migrations
+DATABASE_URL_SYNC_PSYCOPG2 = DATABASE_URL_SYNC.replace("postgresql://", "postgresql+psycopg2://")
+
+# Create sync engine for workers and migrations
+sync_engine = create_engine(
+    DATABASE_URL_SYNC_PSYCOPG2,
+    echo=os.getenv("SQL_ECHO", "false").lower() == "true",
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+)
+
+# Create sync session factory for workers and Alembic
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=sync_engine
+)
+
+# Create async engine for FastAPI endpoints
 engine = create_async_engine(
     DATABASE_URL,
     echo=os.getenv("SQL_ECHO", "false").lower() == "true",
@@ -21,7 +41,7 @@ engine = create_async_engine(
     max_overflow=20,
 )
 
-# Create async session factory
+# Create async session factory for FastAPI endpoints
 AsyncSessionLocal = async_sessionmaker(
     engine,
     class_=AsyncSession,
@@ -43,9 +63,7 @@ def init_db() -> None:
     Initialize database tables.
     This should be called on application startup 
     """
-    from sqlalchemy import create_engine as create_sync_engine
     from .models import Base
     
-    sync_engine = create_sync_engine(DATABASE_URL_SYNC)
+    # Use the psycopg2 sync engine
     Base.metadata.create_all(bind=sync_engine)
-    sync_engine.dispose()

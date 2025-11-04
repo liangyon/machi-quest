@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.db.models import Base
-from app.db.database import DATABASE_URL
+from app.db.database import DATABASE_URL_SYNC_PSYCOPG2
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -25,7 +25,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Override sqlalchemy.url with environment variable if available
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option("sqlalchemy.url", DATABASE_URL_SYNC_PSYCOPG2)
 
 
 def run_migrations_offline() -> None:

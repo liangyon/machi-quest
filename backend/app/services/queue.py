@@ -43,10 +43,11 @@ class QueueService:
         """
         try:
             # Create connection pool with proper settings
+            # Socket timeout must be longer than the block timeout used in consume (5000ms)
             self.pool = redis.ConnectionPool.from_url(
                 redis_url,
                 max_connections=max_connections,
-                socket_timeout=5,  # 5 second socket timeout
+                socket_timeout=30,  # 30 second socket timeout (longer than block timeout)
                 socket_connect_timeout=5,  # 5 second connect timeout
                 retry_on_timeout=True,
                 decode_responses=True,

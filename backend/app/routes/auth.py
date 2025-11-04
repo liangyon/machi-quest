@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 from datetime import timedelta
 from uuid import UUID
 from typing import Optional
@@ -21,6 +20,7 @@ from ..core.security import (
 )
 from ..core.dependencies import get_current_user
 from ..core.config import settings
+from ..repositories.user_repository import UserRepository
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 limiter = Limiter(key_func=get_remote_address)
@@ -28,29 +28,21 @@ limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/signup", response_model=Token, status_code=status.HTTP_201_CREATED)
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-@limiter.limit("3/minute")  # 3 registration attempts per minute
+@limiter.limit("3/minute")
 async def register(
     user_data: UserCreate,
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Register a new user and return tokens.
+    user_repo = UserRepository(db)
     
-    Available at both /signup and /register endpoints.
-    Returns access token in body, refresh token in httpOnly cookie.
-    """
-    # Check if user already exists
-    result = await db.execute(select(User).where(User.email == user_data.email))
-    existing_user = result.scalar_one_or_none()
-    if existing_user:
+    if await user_repo.email_exists(user_data.email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
     
-    # Create new user with hashed password
     hashed_password = get_password_hash(user_data.password)
     new_user = User(
         email=user_data.email,
@@ -59,11 +51,8 @@ async def register(
         avatar_url=user_data.avatar_url
     )
     
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+    new_user = await user_repo.create(new_user)
     
-    # Create tokens
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(new_user.id)},
@@ -71,17 +60,15 @@ async def register(
     )
     refresh_token = create_refresh_token(data={"sub": str(new_user.id)})
     
-    # Set refresh token in httpOnly cookie
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",  # HTTPS only in production
+        secure=settings.ENVIRONMENT == "production",
         samesite="lax",
-        max_age=604800  # 7 days
+        max_age=604800
     )
     
-    # Audit log
     audit_log = AuditLog(
         user_id=new_user.id,
         action="register",
@@ -101,24 +88,16 @@ async def register(
 
 
 @router.post("/token", response_model=Token)
-@limiter.limit("5/minute")  # 5 login attempts per minute
+@limiter.limit("5/minute")
 async def login_for_swagger(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     response: Response = None,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    OAuth2 compatible token login for Swagger UI.
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_email(form_data.username)
     
-    Use your email as the username and your password.
-    This endpoint is specifically for the Swagger UI login form.
-    """
-    # Find user by email (username field in OAuth2 form is the email)
-    result = await db.execute(select(User).where(User.email == form_data.username))
-    user = result.scalar_one_or_none()
-    
-    # Check if user exists and password is correct
     if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -126,7 +105,6 @@ async def login_for_swagger(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create tokens
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id)},
@@ -134,7 +112,6 @@ async def login_for_swagger(
     )
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
-    # Set refresh token in httpOnly cookie if Response is available
     if response:
         response.set_cookie(
             key="refresh_token",
@@ -152,25 +129,16 @@ async def login_for_swagger(
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit("5/minute")  # 5 login attempts per minute
+@limiter.limit("5/minute")
 async def login(
     user_credentials: UserLogin,
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Login user and return JWT access token.
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_email(user_credentials.email)
     
-    Returns access token in body, refresh token in httpOnly cookie.
-    Access tokens are short-lived (15 minutes) for security.
-    Refresh tokens are stored in httpOnly cookies for XSS protection.
-    """
-    # Find user by email
-    result = await db.execute(select(User).where(User.email == user_credentials.email))
-    user = result.scalar_one_or_none()
-    
-    # Check if user exists and password is correct
     if not user or not user.hashed_password or not verify_password(user_credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -178,7 +146,6 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create tokens
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": str(user.id)},
@@ -186,17 +153,15 @@ async def login(
     )
     refresh_token = create_refresh_token(data={"sub": str(user.id)})
     
-    # Set refresh token in httpOnly cookie
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=settings.ENVIRONMENT == "production",  # HTTPS only in production
+        secure=settings.ENVIRONMENT == "production",
         samesite="lax",
-        max_age=604800  # 7 days
+        max_age=604800
     )
     
-    # Audit log
     audit_log = AuditLog(
         user_id=user.id,
         action="login",
@@ -223,11 +188,6 @@ async def refresh_token(
     refresh_token_cookie: Optional[str] = Cookie(None, alias="refresh_token"),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Refresh access token using refresh token from httpOnly cookie.
-    
-    Returns new access token and sets new refresh token in cookie.
-    """
     if not refresh_token_cookie:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -235,7 +195,6 @@ async def refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Decode and validate refresh token
     payload = decode_token(refresh_token_cookie)
     if not payload:
         raise HTTPException(
@@ -244,7 +203,6 @@ async def refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Verify token type
     if not verify_token_type(payload, "refresh"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -252,7 +210,6 @@ async def refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Get user ID from token
     user_id: str = payload.get("sub")
     if not user_id:
         raise HTTPException(
@@ -261,9 +218,8 @@ async def refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Verify user still exists
-    result = await db.execute(select(User).where(User.id == UUID(user_id)))
-    user = result.scalar_one_or_none()
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(UUID(user_id))
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -271,7 +227,6 @@ async def refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create new tokens
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user_id},
@@ -279,7 +234,6 @@ async def refresh_token(
     )
     new_refresh_token = create_refresh_token(data={"sub": user_id})
     
-    # Set new refresh token in cookie
     response.set_cookie(
         key="refresh_token",
         value=new_refresh_token,
@@ -301,13 +255,8 @@ async def logout(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Logout user by clearing refresh token cookie.
-    """
-    # Clear refresh token cookie
     response.delete_cookie(key="refresh_token")
     
-    # Audit log
     audit_log = AuditLog(
         user_id=current_user.id,
         action="logout",
@@ -322,9 +271,4 @@ async def logout(
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
-    """
-    Get current authenticated user.
-    
-    Requires a valid access token in the Authorization header.
-    """
     return current_user

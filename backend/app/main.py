@@ -7,7 +7,8 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from .db import init_db
-from .api import auth, users, pets, admin
+from .routes import auth, users, pets
+from .api import admin
 from .api.integrations import github_oauth, google_oauth, github_app
 from .api.webhooks import github, strava
 from .core.config import settings
