@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import List
 from uuid import UUID
 import logging
@@ -20,10 +21,10 @@ router = APIRouter(prefix="/pets", tags=["Pets"])
 
 
 @router.post("", response_model=PetResponse, status_code=status.HTTP_201_CREATED)
-def create_pet(
+async def create_pet(
     pet_data: PetCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Create a new pet for the authenticated user.
@@ -44,39 +45,40 @@ def create_pet(
     )
     
     db.add(new_pet)
-    db.commit()
-    db.refresh(new_pet)
+    await db.commit()
+    await db.refresh(new_pet)
     
     return new_pet
 
 
 @router.get("", response_model=List[PetResponse])
-def get_user_pets(
+async def get_user_pets(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get all pets belonging to the authenticated user.
     """
-    pets = db.query(Pet).filter(Pet.user_id == current_user.id).all()
+    result = await db.execute(select(Pet).where(Pet.user_id == current_user.id))
+    pets = result.scalars().all()
     return pets
 
 
 @router.get("/{pet_id}", response_model=PetResponse)
-def get_pet(
+async def get_pet(
     pet_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get a specific pet by ID.
     
     The pet must belong to the authenticated user.
     """
-    pet = db.query(Pet).filter(
-        Pet.id == pet_id,
-        Pet.user_id == current_user.id
-    ).first()
+    result = await db.execute(
+        select(Pet).where(Pet.id == pet_id, Pet.user_id == current_user.id)
+    )
+    pet = result.scalar_one_or_none()
     
     if not pet:
         raise HTTPException(
@@ -88,10 +90,10 @@ def get_pet(
 
 
 @router.get("/{pet_id}/state", response_model=PetState)
-def get_pet_state(
+async def get_pet_state(
     pet_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Get a pet's current state with Redis caching.
@@ -113,10 +115,10 @@ def get_pet_state(
     # Cache miss - fetch from database
     logger.debug(f"Cache MISS for pet {pet_id} state")
     
-    pet = db.query(Pet).filter(
-        Pet.id == pet_id,
-        Pet.user_id == current_user.id
-    ).first()
+    result = await db.execute(
+        select(Pet).where(Pet.id == pet_id, Pet.user_id == current_user.id)
+    )
+    pet = result.scalar_one_or_none()
     
     if not pet:
         raise HTTPException(
@@ -145,11 +147,11 @@ def get_pet_state(
 
 
 @router.patch("/{pet_id}", response_model=PetResponse)
-def update_pet(
+async def update_pet(
     pet_id: UUID,
     pet_update: PetUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Update a pet's information.
@@ -157,10 +159,10 @@ def update_pet(
     You can update the pet's name, species, or state.
     Invalidates cache on state changes.
     """
-    pet = db.query(Pet).filter(
-        Pet.id == pet_id,
-        Pet.user_id == current_user.id
-    ).first()
+    result = await db.execute(
+        select(Pet).where(Pet.id == pet_id, Pet.user_id == current_user.id)
+    )
+    pet = result.scalar_one_or_none()
     
     if not pet:
         raise HTTPException(
@@ -187,17 +189,17 @@ def update_pet(
         cache.delete(cache_key)
         logger.info(f"Invalidated cache for pet {pet_id}")
     
-    db.commit()
-    db.refresh(pet)
+    await db.commit()
+    await db.refresh(pet)
     
     return pet
 
 
 @router.delete("/{pet_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_pet(
+async def delete_pet(
     pet_id: UUID,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Delete a pet.
@@ -205,10 +207,10 @@ def delete_pet(
     Only pets belonging to the authenticated user can be deleted.
     This will also delete all associated events.
     """
-    pet = db.query(Pet).filter(
-        Pet.id == pet_id,
-        Pet.user_id == current_user.id
-    ).first()
+    result = await db.execute(
+        select(Pet).where(Pet.id == pet_id, Pet.user_id == current_user.id)
+    )
+    pet = result.scalar_one_or_none()
     
     if not pet:
         raise HTTPException(
@@ -220,14 +222,14 @@ def delete_pet(
     cache_key = pet_state_key(str(pet_id))
     cache.delete(cache_key)
     
-    db.delete(pet)
-    db.commit()
+    await db.delete(pet)
+    await db.commit()
     
     return None
 
 
 @router.get("/metrics/cache", response_model=dict)
-def get_cache_metrics(
+async def get_cache_metrics(
     current_user: User = Depends(get_current_user)
 ):
     """

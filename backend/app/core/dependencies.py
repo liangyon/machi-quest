@@ -1,31 +1,33 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from uuid import UUID
+import logging
 
 from .security import decode_token, verify_token_type
 from .token_blacklist import get_token_blacklist
 from ..db.database import get_db
 from ..db.models import User
-
 # OAuth2 scheme - this will show the login form in Swagger UI
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
+logger = logging.getLogger(__name__)
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ) -> User:
     """
     Dependency to get the current authenticated user.
     Use this in any endpoint that requires authentication.
     
     Checks:
-    1. Token is valid JWT
-    2. Token type is "access"
-    3. Token is not blacklisted
-    4. User is not globally blacklisted
-    5. User exists in database
+    Token is valid JWT
+    token type is "access"
+    Token is not blacklisted
+    User is not blacklisted
+    User exists in database
     """
     # Decode and validate access token
     payload = decode_token(token)
@@ -71,12 +73,11 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
     except (ConnectionError, Exception) as e:
-        # Redis not available - log warning but continue
-        # In production, you might want to fail closed instead
-        print(f"Warning: Token blacklist check failed: {e}")
+        logger.warning(f"Redis blacklist check failed: {e}")
     
     # Get user from database
-    user = db.query(User).filter(User.id == UUID(user_id)).first()
+    result = await db.execute(select(User).where(User.id == UUID(user_id)))
+    user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
