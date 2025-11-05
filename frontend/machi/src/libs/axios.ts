@@ -43,16 +43,20 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If error is 401 and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Skip retry if marked with skipAuthRefresh or already retried
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.skipAuthRefresh) {
       originalRequest._retry = true;
 
       try {
         // Try to refresh the token using httpOnly cookie
+        // Mark this request to skip auth refresh to prevent infinite loops
         const response = await axios.post(
           `${API_BASE_URL}/api/v1/auth/refresh`,
           {},
-          { withCredentials: true }
+          { 
+            withCredentials: true,
+            skipAuthRefresh: true  // Custom flag to prevent retry loop
+          } as any
         );
 
         const newAccessToken = response.data.access_token;
@@ -66,11 +70,11 @@ axiosInstance.interceptors.response.use(
         // Retry the original request
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
+        // Refresh failed, clear tokens
         setAccessToken(null);
         
-        // Only redirect if we're in a browser context
-        if (typeof window !== 'undefined') {
+        // Only redirect if we're in a browser context and not already on auth page
+        if (typeof window !== 'undefined' && !window.location.pathname.includes('/auth')) {
           window.location.href = '/auth';
         }
         

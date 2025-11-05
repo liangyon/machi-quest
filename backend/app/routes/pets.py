@@ -25,7 +25,7 @@ async def create_pet(
 ):
     pet_repo = PetRepository(db)
     default_state = PetState()
-    
+
     new_pet = Pet(
         user_id=current_user.id,
         name=pet_data.name or "My Pet",
@@ -34,7 +34,7 @@ async def create_pet(
         state_json=default_state.model_dump(),
         version=1
     )
-    
+
     return await pet_repo.create(new_pet)
 
 
@@ -55,13 +55,13 @@ async def get_pet(
 ):
     pet_repo = PetRepository(db)
     pet = await pet_repo.get_by_id_and_user(pet_id, current_user.id)
-    
+
     if not pet:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Pet not found or you don't have permission to access it"
         )
-    
+
     return pet
 
 
@@ -73,21 +73,21 @@ async def get_pet_state(
 ):
     pet_repo = PetRepository(db)
     cache_key = pet_state_key(str(pet_id))
-    
+
     cached_state = cache.get(cache_key)
     if cached_state is not None:
         logger.debug(f"Cache HIT for pet {pet_id} state")
         return PetState(**cached_state)
-    
+
     logger.debug(f"Cache MISS for pet {pet_id} state")
     pet = await pet_repo.get_by_id_and_user(pet_id, current_user.id)
-    
+
     if not pet:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Pet not found or you don't have permission to access it"
         )
-    
+
     if not pet.state_json or pet.state_json == {}:
         state_data = {
             "food": 0,
@@ -100,7 +100,7 @@ async def get_pet_state(
         }
     else:
         state_data = pet.state_json
-    
+
     cache.set(cache_key, state_data, ttl_seconds=300)
     return PetState(**state_data)
 
@@ -114,32 +114,32 @@ async def update_pet(
 ):
     pet_repo = PetRepository(db)
     pet = await pet_repo.get_by_id_and_user(pet_id, current_user.id)
-    
+
     if not pet:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Pet not found or you don't have permission to access it"
         )
-    
+
     if pet_update.name is not None:
         pet.name = pet_update.name
-    
+
     if pet_update.species is not None:
         pet.species = pet_update.species
-    
+
     if pet_update.description is not None:
         pet.description = pet_update.description
-    
+
     if pet_update.state_json is not None:
         pet.state_json = pet_update.state_json.model_dump()
         await pet_repo.increment_version(pet)
-        
+
         cache_key = pet_state_key(str(pet_id))
         cache.delete(cache_key)
         logger.info(f"Invalidated cache for pet {pet_id}")
     else:
         await pet_repo.update(pet)
-    
+
     return pet
 
 
@@ -151,17 +151,17 @@ async def delete_pet(
 ):
     pet_repo = PetRepository(db)
     pet = await pet_repo.get_by_id_and_user(pet_id, current_user.id)
-    
+
     if not pet:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Pet not found or you don't have permission to access it"
         )
-    
+
     cache_key = pet_state_key(str(pet_id))
     cache.delete(cache_key)
     await pet_repo.delete(pet)
-    
+
     return None
 
 

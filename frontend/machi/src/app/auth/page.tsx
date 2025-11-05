@@ -106,7 +106,7 @@ export default function AuthPage() {
               />
               {mode === 'signup' && (
                 <p className="text-xs text-neutral-500">
-                  Must be at least 8 characters
+                  Must be 8+ characters with uppercase, lowercase, and digit (e.g., Password123)
                 </p>
               )}
             </div>

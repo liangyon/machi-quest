@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from authlib.integrations.starlette_client import OAuth
 from typing import Optional
 import httpx
@@ -41,7 +42,7 @@ async def github_login(request: Request):
 async def github_callback(
     request: Request,
     code: str,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Handle GitHub OAuth callback.
@@ -87,11 +88,17 @@ async def github_callback(
                 )
         
         # Check if user exists by GitHub ID
-        user = db.query(User).filter(User.github_id == str(github_user['id'])).first()
+        result = await db.execute(
+            select(User).where(User.github_id == str(github_user['id']))
+        )
+        user = result.scalar_one_or_none()
         
         if not user:
             # Check if user exists by email
-            user = db.query(User).filter(User.email == primary_email).first()
+            result = await db.execute(
+                select(User).where(User.email == primary_email)
+            )
+            user = result.scalar_one_or_none()
             
             if user:
                 # Link existing user to GitHub
@@ -116,13 +123,17 @@ async def github_callback(
             user.avatar_url = github_user.get('avatar_url')
             user.github_username = github_user['login']
         
-        db.commit()
+        await db.commit()
+        await db.refresh(user)
         
         # Store or update GitHub integration with encrypted tokens
-        integration = db.query(Integration).filter(
-            Integration.user_id == user.id,
-            Integration.provider == 'github'
-        ).first()
+        result = await db.execute(
+            select(Integration).where(
+                Integration.user_id == user.id,
+                Integration.provider == 'github'
+            )
+        )
+        integration = result.scalar_one_or_none()
         
         encrypted_access_token = encrypt_token(token['access_token'])
         encrypted_refresh_token = None
@@ -152,7 +163,7 @@ async def github_callback(
             )
             db.add(integration)
         
-        db.commit()
+        await db.commit()
         
         # Audit log
         audit_log = AuditLog(
@@ -166,7 +177,7 @@ async def github_callback(
             }
         )
         db.add(audit_log)
-        db.commit()
+        await db.commit()
         
         # Create JWT tokens for our application
         access_token = create_access_token(data={"sub": str(user.id)})
@@ -203,19 +214,22 @@ async def github_callback(
 @router.post("/disconnect")
 async def disconnect_github(
     request: Request,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_db)  # You'll need to implement get_current_user dependency
 ):
     """
     Disconnect GitHub integration for the current user.
     """
-    integration = db.query(Integration).filter(
-        Integration.user_id == current_user.id,
-        Integration.provider == 'github'
-    ).first()
+    result = await db.execute(
+        select(Integration).where(
+            Integration.user_id == current_user.id,
+            Integration.provider == 'github'
+        )
+    )
+    integration = result.scalar_one_or_none()
     
     if integration:
-        db.delete(integration)
-        db.commit()
+        await db.delete(integration)
+        await db.commit()
     
     return {"message": "GitHub integration disconnected successfully"}
