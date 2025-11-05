@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { setAccessToken } from '@/libs/axios';
+import { setAccessToken } from '@/lib/axios';
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -32,9 +32,9 @@ function AuthCallbackContent() {
 
         setStatus('success');
 
-        // Redirect to home after a brief delay
+        // Redirect to dashboard after a brief delay
         setTimeout(() => {
-          router.push('/');
+          router.push('/dashboard');
         }, 1500);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { petApi } from '@/libs/api/petApi';
+import { petApi } from '@/lib/api/petApi';
 import type { Pet, PetCreate, PetUpdate } from '@/types/pet.types';
 
 interface PetContextType {

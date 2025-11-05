@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePet } from '@/contexts/PetContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { petApi } from '@/libs/api/petApi';
+import { petApi } from '@/lib/api/petApi';
 import type { PetState } from '@/types/pet.types';
 
 export default function APITestPage() {

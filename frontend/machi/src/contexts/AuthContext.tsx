@@ -1,10 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { setAccessToken, getAccessToken } from '@/libs/axios';
+import { setAccessToken, getAccessToken } from '@/lib/axios';
 import type { User } from '@/types/user.types';
 
-import { authApi } from '@/libs/api/authApi';
+import { authApi } from '@/lib/api/authApi';
 
 interface AuthContextType {
   user: User | null;

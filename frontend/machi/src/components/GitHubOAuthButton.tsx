@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Github } from 'lucide-react';
-import { authApi } from '@/libs/api/authApi';
+import { authApi } from '@/lib/api/authApi';
 
 interface GitHubOAuthButtonProps {
   className?: string;

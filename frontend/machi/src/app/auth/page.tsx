@@ -31,7 +31,7 @@ export default function AuthPage() {
       } else {
         await signup(email, password, displayName || undefined);
       }
-      router.push('/');
+      router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

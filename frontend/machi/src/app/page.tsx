@@ -1,86 +1,89 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { usePet } from '@/contexts/PetContext';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogOut, Github, User, Plus, Heart, Zap, Utensils } from 'lucide-react';
-import Image from 'next/image';
+import { Zap, Target, Trophy } from 'lucide-react';
 
-import Link from 'next/link';
-
-export default function Home() {
-  const { user, isLoading, isAuthenticated, logout } = useAuth();
-  const { pets, createPet, isLoading: petLoading } = usePet();
-  const router = useRouter();
-
-  useEffect(() => {
-    // Redirect to auth page if not authenticated
-    if (!isLoading && !isAuthenticated) {
-      router.push('/auth');
-    }
-  }, [isLoading, isAuthenticated, router]);
-
-  const handleLogout = async () => {
-    await logout();
-    router.push('/auth');
-  };
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-neutral-900"></div>
-      </div>
-    );
-  }
-
-  // Don't render content if not authenticated (will redirect)
-  if (!isAuthenticated || !user) {
-    return null;
-  }
-
+export default function HeroPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
-      {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-neutral-900 to-neutral-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">M</span>
-              </div>
-              <h1 className="text-2xl font-bold text-neutral-900">Machi Quest</h1>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-neutral-600">
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-neutral-100 to-neutral-200">
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 py-16">
+        <div className="flex flex-col items-center justify-center text-center space-y-8 max-w-4xl mx-auto">
+          {/* Logo/Title */}
+          <div className="space-y-4">
+            <h1 className="text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-neutral-900 to-neutral-600">
+              Machi Quest
+            </h1>
+            <p className="text-xl text-neutral-600 max-w-2xl">
+              Transform your productivity into an adventure. Track your goals, complete quests, and level up your virtual pet companions.
+            </p>
+          </div>
 
-                <span className="font-medium text-neutral-900">{user.display_name}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-              >
-                <Link className="w-4 h-4 mr-2" href="/test"/>
-                Test
-              </Button>
-              <Button
-                onClick={handleLogout}
-                variant="outline"
-                size="sm"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Logout
-              </Button>
-            </div>
+          {/* CTA Buttons */}
+          <div className="flex gap-4 flex-wrap justify-center">
+            <Button asChild size="lg" className="text-lg px-8">
+              <Link href="/auth">Get Started</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="text-lg px-8">
+              <Link href="/dashboard">Go to Dashboard</Link>
+            </Button>
+          </div>
+
+          {/* Feature Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 w-full">
+            <Card className="border-2 hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5" />
+                  Track Goals
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>
+                  Set and track your productivity goals with our powerful quest system. Turn your daily tasks into exciting missions.
+                </CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Earn Rewards
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>
+                  Complete quests to earn experience points and rewards. Watch your virtual pets grow as you accomplish your goals.
+                </CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5" />
+                  Level Up
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>
+                  Progress through levels and unlock new features. Compete with friends and celebrate your achievements.
+                </CardDescription>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </header>
-      crashout froggy
-      
+      </div>
+
+      {/* Footer */}
+      <footer className="container mx-auto px-4 py-8 mt-16 border-t">
+        <div className="flex justify-center text-sm text-neutral-500">
+          <p>&copy; 2025 Machi Quest. Start your productivity adventure today.</p>
+        </div>
+      </footer>
     </div>
   );
 }
