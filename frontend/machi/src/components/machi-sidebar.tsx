@@ -88,7 +88,7 @@ export function MachiSidebar() {
             : 'flex-row items-center justify-between'
         )}
       >
-        <a href="/" className="flex items-center gap-2">
+        <a href="/dashboard" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg ">
             <Image src="/Leaf.png" alt="Machi Quest" width={25} height={25} />
           </div>

@@ -9,9 +9,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
-      <MachiSidebar />
-      <SidebarInset>
+    <SidebarProvider
+      defaultOpen={false}
+    >
+      <div className="relative z-50">
+        <MachiSidebar />
+      </div>
+      <SidebarInset className="relative z-10">
         {children}
       </SidebarInset>
     </SidebarProvider>
