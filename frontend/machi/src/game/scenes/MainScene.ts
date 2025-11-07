@@ -8,7 +8,7 @@ export class MainScene extends Scene {
   
   // Constants
   private readonly PET_INITIAL_SCALE = 1;
-  private readonly CLICK_ANIMATION_DURATION = 100;
+  // private readonly CLICK_ANIMATION_DURATION = 100;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -136,6 +136,7 @@ export class MainScene extends Scene {
 
   update(time: number, delta: number) {
     // Game loop - update animations, physics, etc.
+    console.log(time, delta);
   }
 
   shutdown() {

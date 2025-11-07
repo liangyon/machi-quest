@@ -9,7 +9,7 @@ import httpx
 from ...core.config import settings
 from ...core.security import create_access_token, create_refresh_token, encrypt_token
 from ...core.dependencies import get_db
-from ...db.models import User, Integration, AuditLog
+from ...models import User, Integration, AuditLog
 import uuid
 
 router = APIRouter()

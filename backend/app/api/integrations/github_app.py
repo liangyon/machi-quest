@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 from ...core.config import settings
 from ...core.security import encrypt_token
 from ...core.dependencies import get_db
-from ...db.models import User, Integration
+from ...models import User, Integration
 
 router = APIRouter()
 

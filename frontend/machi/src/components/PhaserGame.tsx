@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export function PhaserGame() {
   const gameRef = useRef<any>(null);
-  const { currentPet, pets } = usePet();
+  const { currentPet } = usePet();
   const { user } = useAuth();
 
   // Handle actions from Phaser
@@ -63,7 +63,7 @@ export function PhaserGame() {
     // Cleanup on unmount
     return () => {
       if (gameRef.current) {
-        gameRef.current.events.off('gameAction', handleGameAction);
+        // gameRef.current.events.off('gameAction', handleGameAction);
         gameRef.current.destroy(true);
         gameRef.current = null;
       }

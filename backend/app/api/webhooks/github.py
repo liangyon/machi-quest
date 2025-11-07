@@ -1,11 +1,6 @@
-"""
-GitHub Webhooks API
-
-Receives and processes webhook events from GitHub (push, PR, commits).
-Implements signature verification for security and stores events for game mechanics.
-"""
+from sqlalchemy import select
 from fastapi import APIRouter, Request, HTTPException, Depends, Header
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 import hmac
 import hashlib
@@ -15,11 +10,10 @@ from datetime import datetime
 from ...core.config import settings
 from ...core.dependencies import get_db
 from ...models import EventRaw, Integration
-from ...services.queue import QueueService
+from ...services.queue import get_redis_client
 
 
 router = APIRouter()
-queue = QueueService(settings.REDIS_URL)
 
 
 def verify_github_signature(payload_body: bytes, signature_header: str) -> bool:
@@ -66,7 +60,7 @@ def verify_github_signature(payload_body: bytes, signature_header: str) -> bool:
 @router.post("/webhooks/github")
 async def receive_github_webhook(
     request: Request,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     x_github_event: Optional[str] = Header(None, alias="X-GitHub-Event"),
     x_github_delivery: Optional[str] = Header(None, alias="X-GitHub-Delivery"),
     x_hub_signature_256: Optional[str] = Header(None, alias="X-Hub-Signature-256"),
@@ -137,9 +131,8 @@ async def receive_github_webhook(
     
     # Step 4: Check for duplicate webhook (idempotency)
     # GitHub may resend webhooks if they don't get a timely response
-    existing_event = db.query(EventRaw).filter(
-        EventRaw.external_event_id == x_github_delivery
-    ).first()
+    result = await db.execute(select(EventRaw).filter(EventRaw.external_event_id == x_github_delivery))
+    existing_event = result.scalar_one_or_none()
     
     if existing_event:
         # Already processed this webhook delivery
@@ -159,26 +152,25 @@ async def receive_github_webhook(
         processed=False  # Will be marked True after processing
     )
     db.add(event_raw)
-    db.flush()  # Get the ID without committing yet
+    await db.flush()  # Get the ID without committing yet
     
+    # Get queue service
+    queue_service = get_redis_client()
     
     try:
         # Publish to webhook-events stream with integration_source
         if x_github_event in ['push', 'pull_request', 'commit_comment']:
-            queue.publish('webhook-events', {
+            await queue_service.publish('webhook-events', {
                 'event_raw_id': str(event_raw.id),
                 'event_type': f'github.{x_github_event}',
-                'integration_source': 'github'  # NEW: For goal matching
+                'integration_source': 'github'  # For goal matching
             })
         else:
             # Unsupported event type - just store the raw event
             pass
-        
-
-        
 
         # Commit all changes
-        db.commit()
+        await db.commit()
         
         return {
             "status": "success",
@@ -190,12 +182,12 @@ async def receive_github_webhook(
         
     except Exception as e:
         # If processing fails, rollback but keep the raw event for debugging
-        db.rollback()
+        await db.rollback()
         
         # Re-add just the raw event
         event_raw.processed = False
         db.add(event_raw)
-        db.commit()
+        await db.commit()
         
         # Return error but with 200 status so GitHub doesn't retry
         # (We've saved the raw event for manual review)

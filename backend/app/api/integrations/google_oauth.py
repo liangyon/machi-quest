@@ -14,7 +14,7 @@ import uuid
 from ...core.config import settings
 from ...core.security import create_access_token, create_refresh_token
 from ...core.dependencies import get_db
-from ...db.models import User, AuditLog
+from ...models import User, AuditLog
 
 router = APIRouter()
 

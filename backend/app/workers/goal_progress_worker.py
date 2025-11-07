@@ -5,16 +5,15 @@ Replaces the old 3-stage pipeline (webhook → scoring → state) with a single 
 that directly updates goals, awards medallions, and tracks growth stages.
 """
 import asyncio
-import json
 import logging
-from datetime import date, datetime
+from datetime import date
 from uuid import UUID
 from typing import Optional, Dict, Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from ..db.database import SessionLocal
+from ..db.database import AsyncSessionLocal
 from ..models import EventRaw, Goal, User, Integration
 from ..repositories.goal_repository import GoalRepository
 from ..services.queue import get_redis_client, WEBHOOK_EVENTS_STREAM
@@ -43,7 +42,8 @@ class GoalProgressWorker:
     """
     
     def __init__(self):
-        self.redis = get_redis_client()
+        self.queue_service = get_redis_client()
+        self.redis = self.queue_service.redis_client
         self.running = False
         
     async def start(self):
@@ -107,10 +107,10 @@ class GoalProgressWorker:
         except Exception as e:
             logger.error(f"Error reading from stream: {e}", exc_info=True)
     
-    async def process_message(self, message_id: str, message_data: Dict[str, bytes]):
+    async def process_message(self, message_id: str, message_data: Dict[str, str]):
         """Process a single webhook event message"""
-        # Decode message data
-        data = {k.decode(): v.decode() for k, v in message_data.items()}
+        # Data is already decoded due to decode_responses=True in Redis client
+        data = message_data
         
         event_raw_id = data.get('event_raw_id')
         event_type = data.get('event_type')
@@ -118,7 +118,7 @@ class GoalProgressWorker:
         
         logger.info(f"Processing event: {event_type} from {integration_source}")
         
-        async with SessionLocal() as db:
+        async with AsyncSessionLocal() as db:
             try:
                 # Get EventRaw
                 event_raw = await db.get(EventRaw, UUID(event_raw_id))

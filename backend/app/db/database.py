@@ -63,7 +63,7 @@ def init_db() -> None:
     Initialize database tables.
     This should be called on application startup 
     """
-    from .models import Base
+    from ..models import Base
     
     # Use the psycopg2 sync engine
     Base.metadata.create_all(bind=sync_engine)

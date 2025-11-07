@@ -74,7 +74,7 @@ export default function DashboardPage() {
         ) : pets.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-neutral-600 mb-4">You don't have any pets yet.</p>
+              <p className="text-neutral-600 mb-4">You don&apos;t have any pets yet.</p>
               <Button onClick={handleCreatePet}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Pet

@@ -20,7 +20,7 @@ export default function AchievementsPage() {
             Achievement Gallery
           </CardTitle>
           <CardDescription>
-            Browse all achievements and see what you've unlocked
+            Browse all achievements and see what you&apos;ve unlocked
           </CardDescription>
         </CardHeader>
         <CardContent className="min-h-[300px] flex items-center justify-center bg-neutral-50">

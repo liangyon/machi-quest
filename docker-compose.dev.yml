@@ -1,14 +1,123 @@
 services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: machi_quest
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - machi-network-dev
+
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - machi-network-dev
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@postgres:5432/machi_quest}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-http://localhost:8000/api/v1/auth/github/callback}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+    networks:
+      - machi-network-dev
+  
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
     volumes:
       - ./frontend/machi:/app
       - /app/node_modules
       - /app/.next
     environment:
-      - NODE_ENV=development
-      - WATCHPACK_POLLING=true
-      - CHOKIDAR_USEPOLLING=true
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
     command: pnpm dev
+    restart: unless-stopped
+    networks:
+      - machi-network-dev
+  
+  worker:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    entrypoint: ["./docker-entrypoint-worker.sh"]
+    command: python -m app.workers.goal_progress_worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@postgres:5432/machi_quest}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+    networks:
+      - machi-network-dev
+
+volumes:
+  postgres_data_dev:
+  redis_data_dev:
+
+networks:
+  machi-network-dev:
+    driver: bridge
