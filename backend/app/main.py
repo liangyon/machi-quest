@@ -7,7 +7,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from .db import init_db
-from .routes import auth, users, pets
+from .routes import auth, users, avatars, goals
 from .api import admin
 from .api.integrations import github_oauth, google_oauth, github_app
 from .api.webhooks import github, strava
@@ -59,7 +59,8 @@ app.add_middleware(
 # Include routers with API v1 prefix
 app.include_router(auth.router, prefix=settings.API_V1_STR)
 app.include_router(users.router, prefix=settings.API_V1_STR)
-app.include_router(pets.router, prefix=settings.API_V1_STR)
+app.include_router(avatars.router, prefix=settings.API_V1_STR)
+app.include_router(goals.router, prefix=settings.API_V1_STR)
 
 # Authentication integrations (sign-in methods)
 app.include_router(github_oauth.router, prefix=f"{settings.API_V1_STR}/auth/github", tags=["auth-github"])

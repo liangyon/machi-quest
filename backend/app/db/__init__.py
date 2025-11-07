@@ -1,15 +1,4 @@
 from .database import get_db, init_db, engine, SessionLocal
-from .models import (
-    Base,
-    User,
-    Pet,
-    Integration,
-    EventRaw,
-    Event,
-    Goal,
-    AuditLog,
-    MetricsCache,
-)
 
 __all__ = [
     # Database utilities
@@ -17,14 +6,4 @@ __all__ = [
     "init_db",
     "engine",
     "SessionLocal",
-    # Models
-    "Base",
-    "User",
-    "Pet",
-    "Integration",
-    "EventRaw",
-    "Event",
-    "Goal",
-    "AuditLog",
-    "MetricsCache",
 ]

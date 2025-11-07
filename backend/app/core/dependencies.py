@@ -8,7 +8,7 @@ import logging
 from .security import decode_token, verify_token_type
 from .token_blacklist import get_token_blacklist
 from ..db.database import get_db
-from ..db.models import User
+from ..models import User
 # OAuth2 scheme - this will show the login form in Swagger UI
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 

@@ -8,7 +8,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from ..db.database import get_db
-from ..db.models import User, AuditLog
+from ..models import User, AuditLog
 from ..schemas.user import UserCreate, UserLogin, UserResponse, Token
 from ..core.security import (
     verify_password,
@@ -21,6 +21,7 @@ from ..core.security import (
 from ..core.dependencies import get_current_user
 from ..core.config import settings
 from ..repositories.user_repository import UserRepository
+from ..repositories.avatar_repository import AvatarRepository
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 limiter = Limiter(key_func=get_remote_address)
@@ -52,6 +53,10 @@ async def register(
     )
     
     new_user = await user_repo.create(new_user)
+    
+    # Auto-create default avatar for new user
+    avatar_repo = AvatarRepository(db)
+    await avatar_repo.create_default_avatar(new_user.id, species="default")
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(

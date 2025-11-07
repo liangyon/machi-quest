@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .base_repository import BaseRepository
-from ..db.models import User
+from ..models import User
 
 
 class UserRepository(BaseRepository[User]):
