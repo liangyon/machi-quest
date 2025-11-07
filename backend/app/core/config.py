@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"  # Next.js default
     BACKEND_CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:8000"]
     
+    # Goal System Settings (NEW)
+    MEDALLIONS_PER_GOAL_PER_DAY: int = 5  # Max medallions awardable per goal per day
+    MAX_ACTIVE_GOALS_PER_USER: int = 5  # Maximum active goals a user can have
+    DEFAULT_AVATAR_SPECIES: str = "default"  # Default avatar species on creation
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

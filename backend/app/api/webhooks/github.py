@@ -14,7 +14,7 @@ from datetime import datetime
 
 from ...core.config import settings
 from ...core.dependencies import get_db
-from ...db.models import EventRaw, Event, User, Integration
+from ...models import EventRaw, Event, User, Integration
 from ...services.queue import QueueService
 
 
@@ -347,20 +347,12 @@ async def receive_github_webhook(
     
     
     try:
-        if x_github_event == 'push':
+        # Publish to webhook-events stream with integration_source
+        if x_github_event in ['push', 'pull_request', 'commit_comment']:
             queue.publish('webhook-events', {
                 'event_raw_id': str(event_raw.id),
-                'event_type': 'push'
-            })
-        elif x_github_event == 'pull_request':
-            queue.publish('webhook-events', {
-                'event_raw_id': str(event_raw.id),
-                'event_type': 'pull_request'
-            })
-        elif x_github_event == 'commit_comment':
-            queue.publish('webhook-events', {
-                'event_raw_id': str(event_raw.id),
-                'event_type': 'commit_comment'
+                'event_type': f'github.{x_github_event}',
+                'integration_source': 'github'  # NEW: For goal matching
             })
         else:
             # Unsupported event type - just store the raw event

@@ -216,3 +216,30 @@ class QueueService:
                 logger.info("Redis queue connection pool closed")
         except Exception as e:
             logger.error(f"Error closing Redis queue connection: {e}")
+
+
+# Singleton instance for the queue service
+_queue_service_instance = None
+
+
+def get_redis_client(redis_url: Optional[str] = None) -> QueueService:
+    """
+    Get or create the singleton QueueService instance.
+    
+    Args:
+        redis_url: Redis connection URL (only used on first call)
+        
+    Returns:
+        QueueService instance
+    """
+    global _queue_service_instance
+    
+    if _queue_service_instance is None:
+        if redis_url is None:
+            # Default to localhost if not provided
+            from ..core.config import settings
+            redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6379')
+        
+        _queue_service_instance = QueueService(redis_url)
+    
+    return _queue_service_instance

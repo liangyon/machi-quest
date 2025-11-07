@@ -11,6 +11,15 @@ from ..schemas.goal import (
     GoalStats,
     GoalCrownRequest
 )
+from ..schemas.goal_template import (
+    GoalTemplate,
+    GoalTemplateResponse,
+    CreateGoalFromTemplate,
+    get_all_templates,
+    get_templates_by_source,
+    get_template_by_id
+)
+from ..types import IntegrationSource
 from ..repositories.goal_repository import GoalRepository
 from ..core.dependencies import get_current_user
 
@@ -216,3 +225,78 @@ async def delete_goal(
     
     await repo.soft_delete(goal_id)
     return None
+
+
+# Goal Template Endpoints
+
+@router.get("/templates/all", response_model=GoalTemplateResponse)
+async def list_all_templates(
+    current_user: User = Depends(get_current_user)
+):
+    """Get all available goal templates"""
+    templates = get_all_templates()
+    return GoalTemplateResponse(
+        templates=templates,
+        count=len(templates)
+    )
+
+
+@router.get("/templates/{integration_source}", response_model=GoalTemplateResponse)
+async def list_templates_by_source(
+    integration_source: IntegrationSource,
+    current_user: User = Depends(get_current_user)
+):
+    """Get goal templates for a specific integration source (github, strava, manual)"""
+    templates = get_templates_by_source(integration_source)
+    return GoalTemplateResponse(
+        templates=templates,
+        count=len(templates)
+    )
+
+
+@router.post("/from-template", response_model=GoalResponse, status_code=status.HTTP_201_CREATED)
+async def create_goal_from_template(
+    request: CreateGoalFromTemplate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a goal from a predefined template"""
+    # Get the template
+    template = get_template_by_id(request.template_id)
+    if not template:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Template not found: {request.template_id}"
+        )
+    
+    # Use template values, with optional overrides
+    goal_name = request.name if request.name else template.name
+    target_value = request.target_value if request.target_value else template.target_value
+    
+    # Create goal from template
+    repo = GoalRepository(db)
+    goal = Goal(
+        user_id=current_user.id,
+        name=goal_name,
+        description=template.description,
+        goal_type=template.goal_type,
+        integration_source=template.integration_source,
+        integration_id=None,  # Will be set if user has integration
+        tracking_type=template.tracking_type,
+        target_value=target_value,
+        unit=template.unit,
+        visual_variant=template.visual_variant,
+        deadline=None,  # User can set later
+        current_progress=0,
+        growth_stage=0,
+        state_json={}
+    )
+    
+    try:
+        created_goal = await repo.create_goal(goal)
+        return created_goal
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )

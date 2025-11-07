@@ -8,7 +8,7 @@ import sys
 # Add the app directory to the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.db.models import Base
+from app.models import Base
 from app.db.database import DATABASE_URL_SYNC_PSYCOPG2
 
 # this is the Alembic Config object, which provides
