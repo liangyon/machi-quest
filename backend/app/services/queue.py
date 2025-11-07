@@ -2,7 +2,7 @@
 Queue Service
 
 Provides Redis Stream operations for message queue functionality.
-Used for webhook processing and score delta calculations.
+Used for webhook processing and goal progress tracking.
 """
 import redis
 import logging
@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 # Queue stream names
 WEBHOOK_EVENTS_STREAM = 'webhook-events'
-SCORE_DELTAS_STREAM = 'score-deltas'
 
 
 class QueueService:

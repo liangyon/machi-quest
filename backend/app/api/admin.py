@@ -11,7 +11,7 @@ from typing import Optional
 from datetime import datetime
 
 from ..core.dependencies import get_db
-from ..db.models import EventRaw, Event, Integration, User
+from ..models import EventRaw, Event, Integration, User
 
 
 router = APIRouter()
@@ -151,7 +151,7 @@ async def get_raw_webhook_by_id(
             events_list.append({
                 "id": str(event.id),
                 "user_id": str(event.user_id),
-                "pet_id": str(event.pet_id) if event.pet_id else None,
+                "goal_id": str(event.goal_id) if event.goal_id else None,
                 "type": event.type,
                 "value": event.value,
                 "meta": event.meta,

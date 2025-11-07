@@ -1,7 +1,7 @@
 """
 Cache Service
 
-Provides Redis caching for pet state and other frequently accessed data.
+Provides Redis caching for frequently accessed data.
 """
 import redis
 import json
@@ -170,7 +170,7 @@ class CacheService:
         Invalidate all keys matching a pattern.
         
         Args:
-            pattern: Redis pattern (e.g., "pet:*:state")
+            pattern: Redis pattern (e.g., ":*:state")
             
         Returns:
             Number of keys deleted
@@ -244,14 +244,3 @@ class CacheService:
                 logger.info("Redis connection pool closed")
         except Exception as e:
             logger.error(f"Error closing Redis connection: {e}")
-
-
-# Cache key builders
-def pet_state_key(pet_id: str) -> str:
-    """Build cache key for pet state."""
-    return f"pet:{pet_id}:state"
-
-
-def user_pets_key(user_id: str) -> str:
-    """Build cache key for user's pets list."""
-    return f"user:{user_id}:pets"

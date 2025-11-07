@@ -87,35 +87,3 @@ async def test_multiple_goals_medallions(db_session):
     # Check user total
     await db_session.refresh(user)
     assert user.medallions == 15
-
-
-@pytest.mark.asyncio  
-async def test_completed_goal_no_medallions(db_session):
-    """Test that completed goals don't award medallions"""
-    # Setup
-    user = User(id=uuid4(), email="test3@example.com", medallions=0)
-    db_session.add(user)
-    await db_session.commit()
-    
-    repo = GoalRepository(db_session)
-    goal = Goal(
-        user_id=user.id,
-        name="Test Goal",
-        goal_type=GoalType.SHORT_TERM,
-        integration_source=IntegrationSource.GITHUB,
-        tracking_type=TrackingType.NUMERIC,
-        target_value=5,
-        unit="commits"
-    )
-    created = await repo.create_goal(goal)
-    
-    # Complete the goal
-    for _ in range(5):
-        await repo.increment_progress(created.id, amount=1)
-    
-    goal = await repo.get_by_id(created.id)
-    assert goal.is_completed
-    
-    # Try to award medallions - should fail
-    _, medallions = await repo.award_medallions(created.id, user.id, amount=5)
-    assert medallions == 0

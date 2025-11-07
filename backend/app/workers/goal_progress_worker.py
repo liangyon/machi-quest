@@ -18,6 +18,7 @@ from ..db.database import SessionLocal
 from ..models import EventRaw, Goal, User, Integration
 from ..repositories.goal_repository import GoalRepository
 from ..services.queue import get_redis_client, WEBHOOK_EVENTS_STREAM
+from .event_extractors import extract_amount
 
 logger = logging.getLogger(__name__)
 
@@ -196,8 +197,15 @@ class GoalProgressWorker:
         """Update goal progress and award medallions"""
         goal_repo = GoalRepository(db)
         
-        # Increment progress
-        amount = 1  # Could be extracted from event payload if needed
+        # Extract amount from event payload based on integration source
+        # This uses lightweight extractors instead of the old complex normalizers
+        amount = extract_amount(
+            integration_source=goal.integration_source,
+            event_type=event_raw.payload.get('event_type', ''),
+            payload=event_raw.payload,
+            unit=goal.unit  # For Strava goals (km, minutes, etc.)
+        )
+        
         await goal_repo.increment_progress(goal.id, amount)
         
         # Award medallions (max 5 per goal per day)

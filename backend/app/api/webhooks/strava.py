@@ -11,7 +11,7 @@ import uuid
 
 from ...core.config import settings
 from ...core.dependencies import get_db
-from ...db.models import EventRaw, User, Integration
+from ...models import EventRaw, User, Integration
 from ...services.queue import QueueService, WEBHOOK_EVENTS_STREAM
 
 router = APIRouter()
@@ -120,7 +120,8 @@ async def receive_strava_webhook(
     # Queue for processing
     queue.publish(WEBHOOK_EVENTS_STREAM, {
         'event_raw_id': str(event_raw.id),
-        'event_type': 'strava_activity'
+        'event_type': 'strava.activity',
+        'integration_source': 'strava'
     })
     
     db.commit()
