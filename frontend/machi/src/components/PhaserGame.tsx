@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { createGameConfig } from '@/game/config';
-import { usePet } from '@/contexts/PetContext';
+import { useGoal } from '@/contexts/GoalContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function PhaserGame() {
   const gameRef = useRef<any>(null);
-  const { currentPet } = usePet();
+  const { currentGoal } = useGoal();
   const { user } = useAuth();
 
   // Handle actions from Phaser
@@ -15,15 +15,9 @@ export function PhaserGame() {
     console.log('Game action:', action, data);
     
     switch (action) {
-      case 'petClicked':
-        // Handle pet click
-        console.log('Pet was clicked at', data.timestamp);
-        break;
-      case 'feedPet':
-        // Call API to feed pet
-        break;
-      case 'playWithPet':
-        // Call API to play with pet
+      case 'goalClicked':
+        // Handle goal click
+        console.log('Goal was clicked at', data.timestamp, 'Goal ID:', data.goalId);
         break;
       default:
         console.warn('Unknown game action:', action);
@@ -78,14 +72,14 @@ export function PhaserGame() {
     gameRef.current.events.on('gameAction', handleGameAction);
   }, [handleGameAction]);
 
-  // Send pet data to Phaser when it changes
+  // Send goal data to Phaser when it changes
   useEffect(() => {
-    if (!gameRef.current || !currentPet) return;
+    if (!gameRef.current || !currentGoal) return;
 
-    gameRef.current.registry.set('petData', currentPet.state_json);
+    gameRef.current.registry.set('goalData', currentGoal);
     gameRef.current.registry.set('userData', user);
     gameRef.current.events.emit('dataUpdated');
-  }, [currentPet, user]);
+  }, [currentGoal, user]);
 
   // Handle visibility changes (pause when tab is hidden)
   useEffect(() => {

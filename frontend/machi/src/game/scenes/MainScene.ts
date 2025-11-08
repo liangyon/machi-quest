@@ -1,14 +1,13 @@
 import { Scene } from 'phaser';
-import type { PetState } from '@/types/pet.types';
+import type { Goal } from '@/types/goal.types';
 
 export class MainScene extends Scene {
-  private pet?: Phaser.GameObjects.Sprite;
-  private petState?: PetState;
+  private goalSprite?: Phaser.GameObjects.Sprite;
+  private currentGoal?: Goal;
   private background?: Phaser.GameObjects.Rectangle;
   
   // Constants
-  private readonly PET_INITIAL_SCALE = 1;
-  // private readonly CLICK_ANIMATION_DURATION = 100;
+  private readonly GOAL_INITIAL_SCALE = 1;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -33,8 +32,8 @@ export class MainScene extends Scene {
     );
     this.background.setOrigin(0, 0);
 
-    // Create placeholder pet (replace with actual sprite later)
-    this.createPet();
+    // Create placeholder goal visual (replace with actual sprite later)
+    this.createGoalVisual();
     
     // Set up event listeners
     this.setupEventListeners();
@@ -43,30 +42,30 @@ export class MainScene extends Scene {
     this.handleDataUpdate();
   }
 
-  private createPet() {
+  private createGoalVisual() {
     // Create a visible placeholder until sprites are loaded
     const graphics = this.add.graphics({ x: 0, y: 0 });
     graphics.fillStyle(0x4a90e2, 1);
     graphics.fillCircle(0, 0, 50);
-    graphics.setName('petGraphics');
+    graphics.setName('goalGraphics');
     
     // Create sprite (will be invisible until texture loaded)
-    this.pet = this.add.sprite(
+    this.goalSprite = this.add.sprite(
       this.scale.width / 2,
       this.scale.height / 2,
       ''
     );
-    this.pet.setScale(this.PET_INITIAL_SCALE);
-    this.pet.setData('graphics', graphics); // Link graphics to pet for easy repositioning
+    this.goalSprite.setScale(this.GOAL_INITIAL_SCALE);
+    this.goalSprite.setData('graphics', graphics); // Link graphics to goal for easy repositioning
     
     // Make interactive
-    this.pet.setInteractive({ useHandCursor: true });
-    this.pet.on('pointerdown', this.onPetClick, this);
-    this.pet.on('pointerover', () => this.pet?.setTint(0xcccccc));
-    this.pet.on('pointerout', () => this.pet?.clearTint());
+    this.goalSprite.setInteractive({ useHandCursor: true });
+    this.goalSprite.on('pointerdown', this.onGoalClick, this);
+    this.goalSprite.on('pointerover', () => this.goalSprite?.setTint(0xcccccc));
+    this.goalSprite.on('pointerout', () => this.goalSprite?.clearTint());
     
-    // Position graphics with pet
-    graphics.setPosition(this.pet.x, this.pet.y);
+    // Position graphics with goal
+    graphics.setPosition(this.goalSprite.x, this.goalSprite.y);
   }
 
   private setupEventListeners() {
@@ -78,36 +77,64 @@ export class MainScene extends Scene {
   }
 
   private handleDataUpdate() {
-    const petData = this.registry.get('petData') as PetState | undefined;
-    if (petData) {
-      this.petState = petData;
-      this.updatePetDisplay();
+    const goalData = this.registry.get('goalData') as Goal | undefined;
+    if (goalData) {
+      this.currentGoal = goalData;
+      this.updateGoalDisplay();
     }
   }
 
-  private updatePetDisplay() {
-    if (!this.pet || !this.petState) return;
+  private updateGoalDisplay() {
+    if (!this.goalSprite || !this.currentGoal) return;
 
-    // Update pet appearance based on state
-    // TODO: Change sprite/animation based on mood, hunger, etc.
+    // Update goal appearance based on state
+    // TODO: Change sprite/animation based on growth stage, progress, etc.
     
-    // Example: Scale based on energy
-    const scale = 0.5 + (this.petState.energy / 200);
-    this.pet.setScale(scale);
+    // Example: Scale based on growth stage (0-3: Baby, Teen, Adult, Crowned)
+    const baseScale = 0.5;
+    const scaleIncrement = 0.25;
+    const scale = baseScale + (this.currentGoal.growth_stage * scaleIncrement);
+    this.goalSprite.setScale(scale);
+    
+    // Update graphics color based on progress
+    const graphics = this.goalSprite.getData('graphics') as Phaser.GameObjects.Graphics;
+    if (graphics) {
+      graphics.clear();
+      
+      // Color changes with progress
+      const progressPercent = this.currentGoal.current_progress / this.currentGoal.target_value;
+      let color = 0x4a90e2; // Blue
+      
+      if (progressPercent >= 1) {
+        color = 0x4caf50; // Green (completed)
+      } else if (progressPercent >= 0.75) {
+        color = 0x8bc34a; // Light green
+      } else if (progressPercent >= 0.5) {
+        color = 0xffc107; // Amber
+      }
+      
+      if (this.currentGoal.is_crowned) {
+        color = 0xffd700; // Gold
+      }
+      
+      graphics.fillStyle(color, 1);
+      graphics.fillCircle(0, 0, 50);
+    }
   }
 
-  private onPetClick() {
+  private onGoalClick() {
     // Emit action to React
-    this.game.events.emit('gameAction', 'petClicked', {
+    this.game.events.emit('gameAction', 'goalClicked', {
       timestamp: Date.now(),
+      goalId: this.currentGoal?.id,
     });
 
     // Play click animation
-    if (this.pet) {
+    if (this.goalSprite) {
       this.tweens.add({
-        targets: this.pet,
-        scaleX: this.pet.scaleX * 1.1,
-        scaleY: this.pet.scaleY * 1.1,
+        targets: this.goalSprite,
+        scaleX: this.goalSprite.scaleX * 1.1,
+        scaleY: this.goalSprite.scaleY * 1.1,
         duration: 100,
         yoyo: true,
       });
@@ -120,23 +147,22 @@ export class MainScene extends Scene {
       this.background.setSize(gameSize.width, gameSize.height);
     }
 
-    if (this.pet) {
+    if (this.goalSprite) {
       const newX = gameSize.width / 2;
       const newY = gameSize.height / 2;
       
-      this.pet.setPosition(newX, newY);
+      this.goalSprite.setPosition(newX, newY);
       
       // Also reposition the graphics placeholder
-      const graphics = this.pet.getData('graphics') as Phaser.GameObjects.Graphics;
+      const graphics = this.goalSprite.getData('graphics') as Phaser.GameObjects.Graphics;
       if (graphics) {
         graphics.setPosition(newX, newY);
       }
     }
   }
 
-  update(time: number, delta: number) {
+  update(_time: number, _delta: number) {
     // Game loop - update animations, physics, etc.
-    console.log(time, delta);
   }
 
   shutdown() {

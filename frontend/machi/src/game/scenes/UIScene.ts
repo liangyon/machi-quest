@@ -1,9 +1,9 @@
 import { Scene } from 'phaser';
-import type { PetState } from '@/types/pet.types';
+import type { Goal } from '@/types/goal.types';
 
 export class UIScene extends Scene {
   private statsText?: Phaser.GameObjects.Text;
-  private petState?: PetState;
+  private currentGoal?: Goal;
 
   constructor() {
     super({ key: 'UIScene' });
@@ -37,23 +37,31 @@ export class UIScene extends Scene {
   }
 
   private handleDataUpdate() {
-    const petData = this.registry.get('petData') as PetState | undefined;
-    if (petData) {
-      this.petState = petData;
+    const goalData = this.registry.get('goalData') as Goal | undefined;
+    if (goalData) {
+      this.currentGoal = goalData;
       this.updateStatsDisplay();
     }
   }
 
   private updateStatsDisplay() {
-    if (!this.statsText || !this.petState) return;
+    if (!this.statsText || !this.currentGoal) return;
+
+    const progressPercent = Math.round(
+      (this.currentGoal.current_progress / this.currentGoal.target_value) * 100
+    );
 
     const stats = [
-      `Level: ${this.petState.level}`,
-      `HP: ${this.petState.health}/100`,
-      `Energy: ${this.petState.energy}/100`,
-      `Hunger: ${this.petState.hunger}/100`,
-      `Mood: ${this.petState.mood}`,
+      `Goal: ${this.currentGoal.name}`,
+      `Progress: ${this.currentGoal.current_progress}/${this.currentGoal.target_value} ${this.currentGoal.unit || ''}`,
+      `${progressPercent}% Complete`,
+      `Stage: ${this.currentGoal.growth_stage}/5`,
+      `Type: ${this.currentGoal.goal_type}`,
     ];
+
+    if (this.currentGoal.is_crowned) {
+      stats.push('👑 CROWNED');
+    }
 
     this.statsText.setText(stats.join('\n'));
   }

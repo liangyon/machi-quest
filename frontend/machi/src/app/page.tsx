@@ -17,7 +17,7 @@ export default function HeroPage() {
               Machi Quest
             </h1>
             <p className="text-xl text-neutral-600 max-w-2xl">
-              Transform your productivity into an adventure. Track your goals, complete quests, and level up your virtual pet companions.
+              Transform your productivity into an adventure. Track your goals, grow your productivity garden, and watch your achievements bloom.
             </p>
           </div>
 
@@ -56,7 +56,7 @@ export default function HeroPage() {
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Complete quests to earn experience points and rewards. Watch your virtual pets grow as you accomplish your goals.
+                  Complete quests to earn experience points and rewards. Watch your goals flourish as you make progress towards your targets.
                 </CardDescription>
               </CardContent>
             </Card>

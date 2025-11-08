@@ -6,7 +6,8 @@ This is separate from GitHub - users can sign in with either GitHub or Google.
 """
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from authlib.integrations.starlette_client import OAuth
 import httpx
 import uuid
@@ -50,7 +51,7 @@ async def google_login(request: Request):
 @router.get("/callback")
 async def google_callback(
     request: Request,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Handle Google OAuth callback.
@@ -80,11 +81,17 @@ async def google_callback(
             )
         
         # Check if user exists by Google ID
-        user = db.query(User).filter(User.google_id == google_id).first()
+        result = await db.execute(
+            select(User).where(User.google_id == google_id)
+        )
+        user = result.scalar_one_or_none()
         
         if not user:
             # Check if user exists by email
-            user = db.query(User).filter(User.email == email).first()
+            result = await db.execute(
+                select(User).where(User.email == email)
+            )
+            user = result.scalar_one_or_none()
             
             if user:
                 # Link existing user to Google
@@ -109,7 +116,8 @@ async def google_callback(
             if picture:
                 user.avatar_url = picture
         
-        db.commit()
+        await db.commit()
+        await db.refresh(user)
         
         # Audit log
         audit_log = AuditLog(
@@ -122,7 +130,7 @@ async def google_callback(
             }
         )
         db.add(audit_log)
-        db.commit()
+        await db.commit()
         
         # Create JWT tokens for our application
         access_token = create_access_token(data={"sub": str(user.id)})
@@ -154,7 +162,7 @@ async def google_callback(
 @router.post("/disconnect")
 async def disconnect_google(
     request: Request,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     # TODO: Add get_current_user dependency when implemented
 ):
     """

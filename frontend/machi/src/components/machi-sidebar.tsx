@@ -25,6 +25,7 @@ import DashboardNavigation from '@/components/nav-main';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 import Image from 'next/image';
 
@@ -88,7 +89,7 @@ export function MachiSidebar() {
             : 'flex-row items-center justify-between'
         )}
       >
-        <a href="/dashboard" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg ">
             <Image src="/Leaf.png" alt="Machi Quest" width={25} height={25} />
           </div>
@@ -97,7 +98,7 @@ export function MachiSidebar() {
               Machi Quest
             </span>
           )}
-        </a>
+        </Link>
 
         <motion.div
           key={isCollapsed ? 'header-collapsed' : 'header-expanded'}

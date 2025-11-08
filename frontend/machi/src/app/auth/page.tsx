@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import GitHubOAuthButton from '@/components/GitHubOAuthButton';
+import GoogleOAuthButton from '@/components/GoogleOAuthButton';
 
 export default function AuthPage() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -53,6 +54,7 @@ export default function AuthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <GoogleOAuthButton className="w-full mb-2" />
           <GitHubOAuthButton className="w-full" />
           
           <div className="relative">

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { PetProvider } from "@/contexts/PetContext";
+import { GoalProvider } from "@/contexts/GoalContext";
 
 export const metadata: Metadata = {
   title: "Machi Quest",
@@ -21,7 +21,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased font-sans">
         <AuthProvider>
-          <PetProvider>{children}</PetProvider>
+          <GoalProvider>{children}</GoalProvider>
         </AuthProvider>
       </body>
     </html>
