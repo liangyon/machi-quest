@@ -26,12 +26,12 @@ resource "random_password" "redis_token" {
 //optional parameters
 resource "aws_elasticache_parameter_group" "redis" {
   name   = "${var.environment}-${var.project_name}-redis-params"
-  family = "redis7"  # Redis 8.x uses redis7 parameter family
+  family = "redis7" # Redis 8.x uses redis7 parameter family
 
   # Timeout for idle connections (seconds)
   parameter {
     name  = "timeout"
-    value = "300"  # 5 minutes
+    value = "300" # 5 minutes
   }
 
   # Max memory policy - evict least recently used keys when memory full
@@ -51,9 +51,9 @@ resource "aws_elasticache_replication_group" "redis" {
 
   # Engine configuration
   engine               = "redis"
-  engine_version       = "8.2"  # Latest Redis version (Nov 2025)
+  engine_version       = "8.2" # Latest Redis version (Nov 2025)
   node_type            = var.redis_node_type
-  num_cache_clusters   = var.redis_num_cache_nodes  # Use num_cache_clusters, not num_node_groups
+  num_cache_clusters   = var.redis_num_cache_nodes # Use num_cache_clusters, not num_node_groups
   parameter_group_name = aws_elasticache_parameter_group.redis.name
   port                 = 6379
 
@@ -63,17 +63,17 @@ resource "aws_elasticache_replication_group" "redis" {
 
   # Security - AUTH token
   auth_token                 = random_password.redis_token.result
-  transit_encryption_enabled = true  # Required for AUTH token
-  at_rest_encryption_enabled = true  # Encrypt data on disk
+  transit_encryption_enabled = true # Required for AUTH token
+  at_rest_encryption_enabled = true # Encrypt data on disk
 
   # High availability
-  automatic_failover_enabled = false  # Set to true for multi-node (costs 2x)
-  multi_az_enabled           = false  # Set to true with automatic_failover for HA
+  automatic_failover_enabled = false # Set to true for multi-node (costs 2x)
+  multi_az_enabled           = false # Set to true with automatic_failover for HA
 
   # Maintenance and backups
   maintenance_window       = "sun:05:00-sun:06:00"
   snapshot_window          = "03:00-04:00"
-  snapshot_retention_limit = 5  # Keep 5 days of backups
+  snapshot_retention_limit = 5 # Keep 5 days of backups
 
   # Auto minor version upgrades
   auto_minor_version_upgrade = true
