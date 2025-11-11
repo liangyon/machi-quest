@@ -313,3 +313,36 @@ pyrightconfig.json
 # End of https://www.toptal.com/developers/gitignore/api/python,node
 
 docs/
+
+
+# Local .terraform directories
+**/.terraform/*
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Sensitive variable files
+*.tfvars
+*.tfvars.json
+
+# Override files (local customizations)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform lock file - COMMIT THIS (like package-lock.json)
+# .terraform.lock.hcl should be committed to lock provider versions
+
+# Ignore backup files created by Terraform
+*.backup
+*.bak
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
