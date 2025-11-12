@@ -226,3 +226,65 @@ resource "aws_ecs_task_definition" "worker" {
 
 
 //now need services to keep these tasks running
+
+//needed alb for these
+
+
+resource "aws_ecs_service" "frontend" {
+  name            = "${var.environment}-${var.project_name}-frontend-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.frontend.arn
+  desired_count   = var.app_count # Number of tasks to run
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = [aws_subnet.private_1.id, aws_subnet.private_2.id]
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_alb_target_group.frontend.arn
+    container_name   = "frontend"
+    container_port   = 3000
+  }
+  depends_on = [aws_lb_listener.http]
+
+}
+
+resource "aws_ecs_service" "backend" {
+  name            = "${var.environment}-${var.project_name}-backend-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.backend.arn
+  desired_count   = var.app_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = [aws_subnet.private_1.id, aws_subnet.private_2.id]
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_alb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 8000
+  }
+}
+
+# Service for Worker (no load balancer)
+resource "aws_ecs_service" "worker" {
+  name            = "${var.environment}-${var.project_name}-worker-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.worker.arn
+  desired_count   = 1 # Usually just 1 worker
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = [aws_subnet.private_1.id, aws_subnet.private_2.id]
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
+  }
+
+  # No load_balancer - workers don't receive HTTP traffic
+}

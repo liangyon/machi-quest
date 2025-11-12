@@ -37,3 +37,10 @@ output "ecr_repository_worker" {
   description = "ECR repository URL for worker"
   value       = aws_ecr_repository.worker.repository_url
 }
+
+
+#alb dns outputs
+output "alb_dns_name" {
+  description = "DNS name of the load balancer"
+  value       = aws_lb.main.dns_name
+}

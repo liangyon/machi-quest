@@ -1,0 +1,36 @@
+# AWS Configuration
+aws_region = "us-east-1"  # Or your preferred region
+
+# Project Configuration
+project_name = "machi-quest"
+environment  = "production"
+
+# Networking
+vpc_cidr           = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# Database
+db_instance_class    = "db.t4g.micro"
+db_allocated_storage = 20
+db_name              = "machiquest"
+db_username          = "machiquest_admin"
+
+# Redis
+redis_node_type       = "cache.t4g.micro"
+redis_num_cache_nodes = 1
+
+# ECS
+app_count      = 1  # Number of containers per service
+fargate_cpu    = 256
+fargate_memory = 512
+
+# Domain (leave empty for now)
+domain_name = "machi.quest"  # Update when you have a domain
+
+# Tags
+tags = {
+  Owner       = "Machi Quest"
+  ManagedBy   = "Terraform"
+  Environment = "Production"
+  Project     = "Machi Quest"
+}
