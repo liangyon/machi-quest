@@ -1,7 +1,8 @@
+'use client';
 import dynamic from 'next/dynamic';
 
 const PhaserGame = dynamic(() => import('@/components/PhaserGame').then(mod => mod.PhaserGame), {
-  ssr: true,
+  ssr: false,
   loading: () =>(
     <div>
 
