@@ -1,4 +1,13 @@
-import { PhaserGame } from '@/components/PhaserGame';
+import dynamic from 'next/dynamic';
+
+const PhaserGame = dynamic(() => import('@/components/PhaserGame').then(mod => mod.PhaserGame), {
+  ssr: true,
+  loading: () =>(
+    <div>
+
+    </div>
+  )
+});
 
 export default function GamePage() {
   return (

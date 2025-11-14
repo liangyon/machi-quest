@@ -6,6 +6,7 @@ import { GoalProvider } from "@/contexts/GoalContext";
 export const metadata: Metadata = {
   title: "Machi Quest",
   description: "Your gamified productivity companion",
+  manifest: "/manifest.json", 
   icons: {
     icon: '/Leaf.png',
     apple: '/Leaf.png',
